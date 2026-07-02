@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validação de TET</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --border:#e3e6ea;
+    --txt:#1c2733; --txt2:#5b6b7b; --txt3:#93a1b0;
+    --azul:#1f4e79; --azul-bg:#e8f0f8;
+    --verde:#1e7e4f; --verde-bg:#e3f3ea;
+    --verm:#b3362c; --verm-bg:#fbeae8;
+    --amar:#8a6110; --amar-bg:#fcf3dd;
+    --radius:10px;
+  }
+  *{box-sizing:border-box; margin:0;}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--txt); font-size:14px;}
+  .wrap{max-width:1080px; margin:0 auto; padding:20px;}
+  .wrap-mobile{max-width:520px; margin:0 auto; padding:16px;}
+  button{font-family:inherit; font-size:13px; padding:9px 14px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--txt); cursor:pointer;}
+  button:hover{background:#f0f2f5;}
+  button.primario{background:var(--azul); border-color:var(--azul); color:#fff; font-weight:600;}
+  button.primario:hover{background:#173d5f;}
+  button.ok{background:var(--verde); border-color:var(--verde); color:#fff;}
+  button.ok:hover{background:#16613c;}
+  button.perigo{background:var(--verm-bg); border-color:#eccfcb; color:var(--verm); font-weight:600;}
+  button.cheio{width:100%; font-size:14px; padding:11px 16px; border-radius:10px;}
+  input, select, textarea{font-family:inherit; font-size:14px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--txt); width:100%;}
+  label{font-size:12px; color:var(--txt2); display:block; margin:0 0 4px;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:15px 16px;}
+  .card.clic{cursor:pointer;}
+  .card.clic:hover{border-color:#b9c4d0;}
+  .card.pend{border-color:#e9d9a8; background:#fffdf5;}
+  .badge{display:inline-block; font-size:11.5px; padding:3px 10px; border-radius:999px; font-weight:500;}
+  .b-azul{background:var(--azul-bg); color:var(--azul);}
+  .b-verde{background:var(--verde-bg); color:var(--verde);}
+  .b-verm{background:var(--verm-bg); color:var(--verm);}
+  .b-amar{background:var(--amar-bg); color:var(--amar);}
+  .b-cinza{background:#eef1f4; color:var(--txt2);}
+  .avatar{width:38px; height:38px; border-radius:50%; background:var(--azul-bg); color:var(--azul); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:13px; flex-shrink:0;}
+  .linha{display:flex; align-items:center; gap:11px; margin-bottom:9px;}
+  .nome{font-weight:600; font-size:14px;}
+  .meta{font-size:12.5px; color:var(--txt2);}
+  .barra{height:7px; background:#edf0f3; border-radius:4px; overflow:hidden; margin:8px 0 4px;}
+  .barra > div{height:100%; background:var(--verde); border-radius:4px;}
+  .tags{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  table{width:100%; border-collapse:collapse;}
+  th{text-align:left; font-size:11.5px; color:var(--txt2); font-weight:600; padding:7px 8px; border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:.3px;}
+  td{padding:8px; font-size:13px; border-bottom:1px solid #eef1f4; vertical-align:top;}
+  tr.linhacli{cursor:pointer;}
+  tr.linhacli:hover td{background:#fafbfc;}
+  .detalhe{background:#f8fafc;}
+  .detalhe td{padding:12px 14px;}
+  .det-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px;}
+  .det-item .dl{font-size:11px; color:var(--txt3); text-transform:uppercase; letter-spacing:.3px; margin-bottom:2px;}
+  .det-item .dv{font-size:13px;}
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:22px;}
+  .kpi{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px;}
+  .kpi .lbl{font-size:12px; color:var(--txt2); margin-bottom:4px;}
+  .kpi .val{font-size:24px; font-weight:600;}
+  .sec{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 10px;}
+  .sec h2{font-size:15px; font-weight:600;}
+  .sec .hint{font-size:12px; color:var(--txt3); font-weight:400;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-bottom:24px;}
+  .topo{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px;}
+  h1{font-size:19px; font-weight:600;}
+  .form-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:12px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .chk{display:inline-flex; align-items:center; gap:6px; font-size:13px; border:1px solid var(--border); border-radius:8px; padding:7px 11px; cursor:pointer; background:var(--card);}
+  .aviso{display:none; font-size:13px; padding:9px 13px; border-radius:8px; margin-bottom:14px;}
+  .drop{border:2px dashed var(--border); border-radius:var(--radius); padding:22px; text-align:center; color:var(--txt2); cursor:pointer; background:#fafbfc;}
+  .drop:hover{border-color:var(--azul); color:var(--azul);}
+  .pill{font-family:inherit; font-size:13px; padding:9px 0; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--txt); cursor:pointer; text-align:center; font-weight:500;}
+  .pill.on{background:var(--azul); border-color:var(--azul); color:#fff;}
+  .pill.mini{font-size:12px; padding:7px 12px;}
+  .pill.mini.on{background:var(--verde); border-color:var(--verde);}
+  .dias-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px;}
+  .dia-per{display:flex; align-items:center; justify-content:space-between; gap:8px; background:#f7f9fb; border:1px solid var(--border); border-radius:10px; padding:8px 12px; margin-top:6px;}
+  .abas{display:flex; gap:6px; margin:14px 0;}
+  .abas button{flex:1; padding:9px 4px; font-size:13px;}
+  .abas button.ativa{background:var(--azul-bg); border-color:var(--azul); color:var(--azul); font-weight:600;}
+  .tela-central{min-height:92vh; display:flex; align-items:center; justify-content:center; padding:16px;}
+  .logo{width:52px; height:52px; border-radius:14px; background:var(--azul); color:#fff; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; margin:0 auto 12px;}
+  .topbar{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px;}
+  .link{color:var(--azul); cursor:pointer; text-decoration:underline; font-size:13px;}
+  .cli{margin-bottom:10px;}
+  .fechar{float:right; font-size:12px;}
+  #telaCadastro,#telaEspera,#telaColab,#telaGestor,#drill{display:none;}
+  #modalCheck{display:none; position:absolute; left:0; right:0; top:0; background:rgba(20,30,40,.45); min-height:100%; padding:20px 14px; z-index:10;}
+  #carregando{position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:99; font-size:14px; color:var(--txt2);}
+  @media (max-width:640px){ .wrap{padding:12px;} }
+</style>
+</head>
+<body>
+
+<div id="carregando">Conectando ao servidor…</div>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="telaLogin" class="tela-central">
+  <div class="card" style="width:100%; max-width:360px;">
+    <div class="logo">TET</div>
+    <div style="text-align:center; margin-bottom:18px;">
+      <div class="nome" style="font-size:17px;">Validação de TET</div>
+      <div class="meta">Martins Farma · acesso do colaborador</div>
+    </div>
+    <label>Login</label>
+    <input type="text" id="lUser" placeholder="seu login" style="margin-bottom:10px;" autocomplete="username">
+    <label>Senha</label>
+    <input type="password" id="lPass" placeholder="••••••••" style="margin-bottom:16px;" onkeydown="if(event.key==='Enter')entrar()">
+    <button class="primario cheio" onclick="entrar()">Entrar</button>
+    <div id="lErro" class="aviso" style="background:var(--verm-bg); color:var(--verm); text-align:center;">Login ou senha incorretos.</div>
+    <div style="text-align:center; margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
+      <span class="meta">Ainda não tem acesso? </span>
+      <span class="link" onclick="irCadastro()">Primeiro acesso</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PRIMEIRO ACESSO ===================== -->
+<div id="telaCadastro" class="tela-central">
+  <div class="card" style="width:100%; max-width:360px;">
+    <div class="logo">TET</div>
+    <div style="text-align:center; margin-bottom:18px;">
+      <div class="nome" style="font-size:17px;">Primeiro acesso</div>
+      <div class="meta">Crie seu cadastro — o gestor vai aprovar e liberar seus TETs</div>
+    </div>
+    <label>Nome completo</label>
+    <input type="text" id="cNome" placeholder="Seu nome completo" style="margin-bottom:10px;" oninput="sugerirLogin()">
+    <label>Login</label>
+    <input type="text" id="cLogin" placeholder="ex: joao" style="margin-bottom:10px;">
+    <label>Senha</label>
+    <input type="password" id="cSenha" placeholder="Mínimo 4 caracteres" style="margin-bottom:10px;">
+    <label>Confirmar senha</label>
+    <input type="password" id="cSenha2" placeholder="Repita a senha" style="margin-bottom:10px;">
+    <label>UF onde você atua</label>
+    <select id="cUf" style="margin-bottom:16px;"></select>
+    <button class="primario cheio" onclick="cadastrar()">Criar meu acesso</button>
+    <div id="cErro" class="aviso" style="background:var(--verm-bg); color:var(--verm);"></div>
+    <div id="cOk" class="aviso" style="background:var(--verde-bg); color:var(--verde);"></div>
+    <div style="text-align:center; margin-top:14px;">
+      <span class="link" onclick="irLogin()">← Voltar para o login</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== AGUARDANDO APROVAÇÃO ===================== -->
+<div id="telaEspera" class="tela-central">
+  <div class="card" style="width:100%; max-width:360px; text-align:center;">
+    <div class="logo" style="background:var(--amar-bg); color:var(--amar);">⏳</div>
+    <div class="nome" style="font-size:17px; margin-bottom:6px;">Aguardando aprovação</div>
+    <div class="meta" style="margin-bottom:6px;" id="eNome"></div>
+    <div class="meta" style="margin-bottom:18px;">Seu cadastro foi enviado ao gestor. Assim que ele aprovar e atribuir seus TETs, sua carteira de clientes aparece aqui.</div>
+    <span class="badge b-amar">Status: pendente de aprovação</span>
+    <div style="margin-top:18px;">
+      <button class="cheio" onclick="sair()">Sair</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== VISÃO COLABORADOR ===================== -->
+<div id="telaColab">
+<div class="wrap-mobile">
+  <div class="topbar">
+    <div>
+      <div class="nome" id="hNome"></div>
+      <div class="meta" id="hTets"></div>
+    </div>
+    <button onclick="sair()" style="font-size:12.5px; padding:8px 12px;">Sair</button>
+  </div>
+  <div class="card" style="margin-bottom:14px;">
+    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+      <span class="meta">Progresso da validação</span>
+      <span class="nome" id="hPct" style="font-size:14px;"></span>
+    </div>
+    <div class="barra"><div id="hBarra" style="width:0%"></div></div>
+    <div class="meta" id="hResumo" style="margin-top:8px;"></div>
+  </div>
+  <input type="text" id="busca" placeholder="🔎 Buscar cliente, endereço ou código..." oninput="renderLista()" style="margin-bottom:2px;">
+  <div class="abas">
+    <button id="abPen" class="ativa" onclick="setAba('pen')">Pendentes</button>
+    <button id="abVis" onclick="setAba('vis')">Atualizados</button>
+    <button id="abFec" onclick="setAba('fec')">Não existem</button>
+    <button id="abTod" onclick="setAba('tod')">Todas</button>
+  </div>
+  <div id="lista"></div>
+</div>
+</div>
+
+<!-- ===================== MODAL ATUALIZAÇÃO DE DADOS ===================== -->
+<div id="modalCheck">
+  <div class="card" style="max-width:520px; margin:0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:start; gap:10px; margin-bottom:4px;">
+      <div>
+        <div class="badge b-azul" style="margin-bottom:6px;">Atualização de dados</div>
+        <div class="nome" id="mNome"></div>
+        <div class="meta" id="mInfo"></div>
+      </div>
+      <button onclick="fecharModal()" style="padding:6px 10px; font-size:12px;">✕</button>
+    </div>
+    <div style="border-top:1px solid var(--border); margin:12px 0;"></div>
+
+    <div style="margin-bottom:12px;">
+      <label>Porte da loja</label>
+      <div class="dias-grid" style="grid-template-columns:repeat(4,1fr);">
+        <button type="button" class="pill" data-porte="P" onclick="setPorte('P')">P</button>
+        <button type="button" class="pill" data-porte="M" onclick="setPorte('M')">M</button>
+        <button type="button" class="pill" data-porte="G" onclick="setPorte('G')">G</button>
+        <button type="button" class="pill" data-porte="GG" onclick="setPorte('GG')">GG</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <label>Dias que o cliente gosta de comprar — toque no dia e escolha o período</label>
+      <div class="dias-grid">
+        <button type="button" class="pill" data-dia="Seg" onclick="toqueDia('Seg')">Seg</button>
+        <button type="button" class="pill" data-dia="Ter" onclick="toqueDia('Ter')">Ter</button>
+        <button type="button" class="pill" data-dia="Qua" onclick="toqueDia('Qua')">Qua</button>
+        <button type="button" class="pill" data-dia="Qui" onclick="toqueDia('Qui')">Qui</button>
+        <button type="button" class="pill" data-dia="Sex" onclick="toqueDia('Sex')">Sex</button>
+        <button type="button" class="pill" data-dia="Sáb" onclick="toqueDia('Sáb')">Sáb</button>
+      </div>
+      <div id="diasPeriodo"></div>
+    </div>
+
+    <div class="grid2" style="margin-bottom:10px;">
+      <div><label>Nome do comprador</label><input type="text" id="mCompNome"></div>
+      <div><label>Telefone do comprador</label><input type="tel" id="mCompTel" placeholder="(11) 9...."></div>
+    </div>
+    <div class="grid2" style="margin-bottom:10px;">
+      <div><label>Nome do proprietário</label><input type="text" id="mPropNome"></div>
+      <div><label>Telefone do proprietário</label><input type="tel" id="mPropTel" placeholder="(11) 9...."></div>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <label>Formato de compras — pode marcar mais de um</label>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        <button type="button" class="pill mini" data-fmt="Cotação" onclick="toqueFmt('Cotação')">Cotação</button>
+        <button type="button" class="pill mini" data-fmt="Online" onclick="toqueFmt('Online')">Online</button>
+        <button type="button" class="pill mini" data-fmt="Visita presencial" onclick="toqueFmt('Visita presencial')">Visita presencial</button>
+        <button type="button" class="pill mini" data-fmt="Televendas" onclick="toqueFmt('Televendas')">Televendas</button>
+        <button type="button" class="pill mini" data-fmt="WhatsApp" onclick="toqueFmt('WhatsApp')">WhatsApp</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <label>Cliente possui acesso ao Martins? — pode marcar mais de um</label>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        <button type="button" class="pill mini" data-ac="Site" onclick="toqueAcesso('Site')">Site</button>
+        <button type="button" class="pill mini" data-ac="App" onclick="toqueAcesso('App')">App</button>
+        <button type="button" class="pill mini" data-ac="Tele venda" onclick="toqueAcesso('Tele venda')">Tele venda</button>
+        <button type="button" class="pill mini" data-ac="Não tem acesso" onclick="toqueAcesso('Não tem acesso')">Não tem acesso</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <label>Cliente conhece o RCA?</label>
+      <div style="display:flex; gap:6px;">
+        <button type="button" class="pill mini" data-rca="Sim" onclick="setConhece('Sim')">Sim</button>
+        <button type="button" class="pill mini" data-rca="Não" onclick="setConhece('Não')">Não</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <label>Qual a frequência de visita do RCA?</label>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        <button type="button" class="pill mini" data-freq="Semanal" onclick="setFreq('Semanal')">Semanal</button>
+        <button type="button" class="pill mini" data-freq="15 em 15 dias" onclick="setFreq('15 em 15 dias')">15 em 15 dias</button>
+        <button type="button" class="pill mini" data-freq="1x por mês" onclick="setFreq('1x por mês')">1x por mês</button>
+        <button type="button" class="pill mini" data-freq="Não recebe visita" onclick="setFreq('Não recebe visita')">Não recebe visita</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label>Observações</label>
+      <textarea id="mObs" rows="2" placeholder="Opcional"></textarea>
+    </div>
+
+    <button class="primario cheio" onclick="salvarAtualizacao()" style="margin-bottom:8px;">✓ Salvar atualização de dados</button>
+    <button class="perigo cheio" onclick="lojaNaoExiste()">✕ Loja não existe</button>
+  </div>
+</div>
+
+<!-- ===================== VISÃO GESTOR ===================== -->
+<div id="telaGestor">
+<div class="wrap">
+
+  <div class="topo">
+    <div>
+      <h1>Validação de TET — Brasil</h1>
+      <div class="meta">Visão gestor · Danilo Lopes</div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="primario" onclick="toggleSubir()">⬆ Subir TET</button>
+      <button onclick="exportCSV()">⬇ Exportar CSV</button>
+      <button onclick="sair()">Sair</button>
+    </div>
+  </div>
+
+  <div id="formTet" class="card" style="display:none; margin-bottom:16px;">
+    <div class="nome" style="margin-bottom:10px;">Subir novo TET</div>
+    <div class="form-grid">
+      <div><label>Nome do TET</label><input type="text" id="tNome" placeholder="ex: TET OSASCO"></div>
+      <div><label>UF do TET</label><select id="tUf"></select></div>
+    </div>
+    <label>Planilha do GT (Excel .xlsx ou .csv) — o sistema filtra automaticamente código, razão social e endereço</label>
+    <div class="drop" onclick="document.getElementById('xlsTet').click()" id="dropZone">
+      Clique para selecionar a planilha enviada pelo GT
+    </div>
+    <input type="file" id="xlsTet" accept=".xlsx,.xls,.csv" style="display:none" onchange="lerPlanilha(event)">
+    <div id="preview" style="display:none; margin-top:12px;">
+      <div id="prevInfo" class="aviso" style="display:block; margin-bottom:10px;"></div>
+      <div style="overflow-x:auto; max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;">
+        <div id="prevTable"></div>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button class="primario" onclick="criarTet()">Criar TET com estes clientes</button>
+        <button onclick="cancelarSubir()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="upMsg" class="aviso"></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="lbl">Clientes na base</div><div class="val" id="kCli">0</div></div>
+    <div class="kpi"><div class="lbl">TETs</div><div class="val" id="kTet">0</div></div>
+    <div class="kpi"><div class="lbl">UFs ativas</div><div class="val" id="kUf">0</div></div>
+    <div class="kpi"><div class="lbl">Atualizados</div><div class="val" id="kVis" style="color:var(--verde)">0</div></div>
+    <div class="kpi"><div class="lbl">Lojas não existem</div><div class="val" id="kFec" style="color:var(--verm)">0</div></div>
+    <div class="kpi"><div class="lbl">Pendentes</div><div class="val" id="kPen" style="color:var(--amar)">0</div></div>
+  </div>
+
+  <div id="secAprov" style="display:none;">
+    <div class="sec">
+      <h2>Aprovações pendentes <span class="badge b-amar" id="nAprov"></span></h2>
+      <span class="hint">Cadastros de primeiro acesso aguardando sua liberação</span>
+    </div>
+    <div class="grid" id="listAprov"></div>
+  </div>
+
+  <div class="sec">
+    <h2>Colaboradores</h2>
+    <button onclick="toggleForm()">+ Novo colaborador</button>
+  </div>
+
+  <div id="formColab" class="card" style="display:none; margin-bottom:14px;">
+    <div class="form-grid">
+      <div><label>Nome</label><input type="text" id="fNome" placeholder="Nome do colaborador" oninput="sugLogin()"></div>
+      <div><label>Login</label><input type="text" id="fLogin"></div>
+      <div><label>Senha</label><input type="text" id="fSenha"></div>
+      <div><label>UF</label><select id="fUf" onchange="renderTetChecks()"></select></div>
+    </div>
+    <label>TETs atribuídos — o colaborador só verá os clientes destes TETs</label>
+    <div id="fTets" style="display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 14px;"></div>
+    <div style="display:flex; gap:8px;">
+      <button class="primario" onclick="saveColab()">Salvar colaborador</button>
+      <button onclick="toggleForm()">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="grid" id="listColab"></div>
+
+  <div class="sec">
+    <h2>Territórios por UF <span class="hint">— clique num TET para ver a carteira, e num cliente para ver os dados coletados</span></h2>
+    <select id="selUf" onchange="renderTerr()" style="width:auto; min-width:110px;"></select>
+  </div>
+  <div class="grid" id="listTerr"></div>
+
+  <div id="drill" class="card" style="margin-bottom:24px;">
+    <button class="fechar" onclick="document.getElementById('drill').style.display='none'">✕ Fechar</button>
+    <div class="nome" id="drillTitle" style="margin-bottom:10px;"></div>
+    <div style="overflow-x:auto;"><div id="drillBody"></div></div>
+  </div>
+
+</div>
+</div>
+
+<script>
+/* ============ FIREBASE ============ */
+firebase.initializeApp({ databaseURL: "https://varlopex-default-rtdb.firebaseio.com" });
+var RAIZ = firebase.database().ref('validacao_tet');
+
+var GESTOR_LOGIN = "adm", GESTOR_SENHA = "adm10", GESTOR_NOME = "Danilo Lopes";
+var UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
+var ORDEM = ['Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+var COLABS = {};        /* login -> {nome, senha, uf, status, tets:[]} */
+var CLIENTES = {};      /* chave -> {cod, nome, end, cid, uf, tet, st, reg, colab} */
+var user = null;        /* login do colaborador logado, ou 'adm' */
+var papel = null;       /* 'colab' ou 'gestor' */
+var aba = 'pen', cliChave = null, pendUpload = null, prontoColab = false, prontoCli = false;
+var selPorte = '', selDias = {}, selFmts = [], selAcesso = [], selConhece = '', selFreq = '';
+
+function norm(s){ return String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function chaveSegura(s){ return String(s).replace(/[.#$\[\]\/]/g,'_'); }
+function cliArr(){ return Object.keys(CLIENTES).map(function(k){ var c = CLIENTES[k]; c._k = k; return c; }); }
+function tetsAll(){ var s={}; cliArr().forEach(function(c){ s[c.tet]=c.uf; }); return s; }
+function ufsAtivas(){ var s={}; cliArr().forEach(function(c){ s[c.uf]=1; }); return Object.keys(s).sort(); }
+function resumoDias(dias){
+  return ORDEM.filter(function(d){return dias && dias[d];})
+    .map(function(d){return d+' ('+dias[d]+')';}).join(', ');
+}
+
+/* ============ LISTENERS EM TEMPO REAL ============ */
+RAIZ.child('colaboradores').on('value', function(snap){
+  COLABS = snap.val() || {};
+  Object.keys(COLABS).forEach(function(k){ if(!COLABS[k].tets) COLABS[k].tets = []; });
+  prontoColab = true; aoAtualizar();
+}, function(){ prontoColab = true; aoAtualizar(); });
+
+RAIZ.child('clientes').on('value', function(snap){
+  CLIENTES = snap.val() || {};
+  prontoCli = true; aoAtualizar();
+}, function(){ prontoCli = true; aoAtualizar(); });
+
+function aoAtualizar(){
+  if(prontoColab && prontoCli) document.getElementById('carregando').style.display = 'none';
+  if(papel === 'gestor'){ fillSelects(); kpis(); renderAprov(); renderColabs(); renderTerr(); }
+  if(papel === 'colab' && user && COLABS[user]) renderLista();
+}
+
+/* ============ NAVEGAÇÃO ============ */
+function mostraTela(id){
+  ['telaLogin','telaCadastro','telaEspera','telaColab','telaGestor'].forEach(function(t){
+    document.getElementById(t).style.display = 'none';
+  });
+  document.getElementById(id).style.display = (id==='telaColab'||id==='telaGestor') ? 'block' : 'flex';
+}
+function irCadastro(){
+  document.getElementById('cErro').style.display='none';
+  document.getElementById('cOk').style.display='none';
+  mostraTela('telaCadastro');
+}
+function irLogin(){
+  document.getElementById('lErro').style.display='none';
+  mostraTela('telaLogin');
+}
+function sair(){
+  user = null; papel = null;
+  document.getElementById('lPass').value = '';
+  document.getElementById('lErro').style.display = 'none';
+  irLogin();
+}
+
+/* ============ LOGIN / PRIMEIRO ACESSO ============ */
+function entrar(){
+  var u = document.getElementById('lUser').value.trim().toLowerCase();
+  var p = document.getElementById('lPass').value.trim();
+  if(u === GESTOR_LOGIN && p === GESTOR_SENHA){
+    user = u; papel = 'gestor';
+    mostraTela('telaGestor');
+    fillSelects(); kpis(); renderAprov(); renderColabs(); renderTerr();
+    return;
+  }
+  var c = COLABS[u];
+  if(c && c.senha === p){
+    user = u; papel = 'colab';
+    if(c.status !== 'ok' || !c.tets.length){
+      document.getElementById('eNome').textContent = c.nome + ' · ' + c.uf;
+      mostraTela('telaEspera');
+      return;
+    }
+    document.getElementById('hNome').textContent = c.nome;
+    document.getElementById('hTets').textContent = c.tets.join(' · ');
+    mostraTela('telaColab');
+    setAba('pen');
+  } else {
+    document.getElementById('lErro').style.display = 'block';
+  }
+}
+
+function sugerirLogin(){
+  var n = document.getElementById('cNome').value.trim().split(' ')[0].toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  document.getElementById('cLogin').value = n;
+}
+
+function cadastrar(){
+  var nome = document.getElementById('cNome').value.trim();
+  var login = document.getElementById('cLogin').value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+  var s1 = document.getElementById('cSenha').value;
+  var s2 = document.getElementById('cSenha2').value;
+  var uf = document.getElementById('cUf').value;
+  var erro = document.getElementById('cErro');
+  erro.style.display = 'none';
+  if(!nome || nome.split(' ').length < 2){ erro.textContent='Informe seu nome completo.'; erro.style.display='block'; return; }
+  if(!login){ erro.textContent='Informe um login (só letras e números).'; erro.style.display='block'; return; }
+  if(login === GESTOR_LOGIN || COLABS[login]){ erro.textContent='Este login já está em uso. Escolha outro.'; erro.style.display='block'; return; }
+  if(s1.length < 4){ erro.textContent='A senha precisa ter pelo menos 4 caracteres.'; erro.style.display='block'; return; }
+  if(s1 !== s2){ erro.textContent='As senhas não conferem.'; erro.style.display='block'; return; }
+  RAIZ.child('colaboradores/'+login).set({
+    nome: nome, senha: s1, uf: uf, status: 'pend', tets: [],
+    solicitadoEm: new Date().toLocaleString('pt-BR')
+  }).then(function(){
+    var ok = document.getElementById('cOk');
+    ok.textContent = 'Cadastro criado! Entre com seu login e senha — seu acesso fica ativo assim que o gestor aprovar.';
+    ok.style.display = 'block';
+    document.getElementById('cNome').value=''; document.getElementById('cLogin').value='';
+    document.getElementById('cSenha').value=''; document.getElementById('cSenha2').value='';
+    setTimeout(irLogin, 2500);
+  }).catch(function(e){
+    erro.textContent = 'Erro ao salvar: '+e.message; erro.style.display='block';
+  });
+}
+
+/* ============ COLABORADOR ============ */
+function meus(){
+  var c = COLABS[user] || {tets:[]};
+  return cliArr().filter(function(x){ return c.tets.indexOf(x.tet) >= 0; });
+}
+function setAba(a){
+  aba = a;
+  var ids = {pen:'abPen', vis:'abVis', fec:'abFec', tod:'abTod'};
+  Object.keys(ids).forEach(function(k){ document.getElementById(ids[k]).className = k===a ? 'ativa' : ''; });
+  renderLista();
+}
+function progresso(){
+  var m = meus();
+  var done = m.filter(function(c){return c.st!=='pen'}).length;
+  var pct = m.length ? Math.round(done/m.length*100) : 0;
+  document.getElementById('hPct').textContent = pct + '%';
+  document.getElementById('hBarra').style.width = pct + '%';
+  var vis = m.filter(function(c){return c.st==='vis'}).length;
+  var fec = m.filter(function(c){return c.st==='fec'}).length;
+  document.getElementById('hResumo').textContent =
+    m.length+' clientes na carteira · '+vis+' atualizados · '+fec+' não existem · '+(m.length-done)+' pendentes';
+}
+function renderLista(){
+  if(papel!=='colab') return;
+  progresso();
+  var q = document.getElementById('busca').value.trim().toLowerCase();
+  var arr = meus().filter(function(c){
+    if(aba!=='tod' && c.st!==aba) return false;
+    if(q && (c.nome+' '+(c.end||'')+' '+c.cod+' '+(c.cid||'')).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+  if(!arr.length){
+    document.getElementById('lista').innerHTML = '<div class="card meta" style="text-align:center;">Nenhum cliente nesta aba.</div>';
+    return;
+  }
+  document.getElementById('lista').innerHTML = arr.map(function(c){
+    var st = c.st==='vis' ? '<span class="badge b-verde">Atualizado</span>'
+      : c.st==='fec' ? '<span class="badge b-verm">Não existe</span>'
+      : '<span class="badge b-amar">Pendente</span>';
+    var det = '';
+    if(c.st==='vis' && c.reg){
+      var pedacos = [];
+      if(c.reg.porte) pedacos.push('Porte '+c.reg.porte);
+      var d = resumoDias(c.reg.dias);
+      if(d) pedacos.push(d);
+      if(c.reg.fmts && c.reg.fmts.length) pedacos.push(c.reg.fmts.join(', '));
+      if(pedacos.length) det = '<div class="meta" style="margin-top:6px;">'+pedacos.join(' · ')+'</div>';
+    }
+    var btn = c.st==='pen'
+      ? '<button class="primario" style="margin-top:10px; width:100%;" onclick="abrirAtualizacao(\''+c._k+'\')">Atualização de dados</button>'
+      : '<button style="margin-top:10px; width:100%; font-size:12.5px;" onclick="abrirAtualizacao(\''+c._k+'\')">Editar atualização</button>';
+    var mapa = 'https://www.google.com/maps/search/'+encodeURIComponent(c.nome+' '+(c.end||'')+' '+(c.cid||''));
+    return '<div class="card cli">'
+      +'<div style="display:flex; justify-content:space-between; gap:8px; align-items:start;">'
+      +'<div><div class="nome">'+c.nome+'</div>'
+      +'<div class="meta">'+(c.end||'')+' · '+(c.cid||'')+'</div>'
+      +'<div class="meta" style="color:var(--txt3);">Cód. '+c.cod+' · '+c.tet+' · <a href="'+mapa+'" target="_blank" style="color:var(--azul);">Ver no mapa</a></div></div>'
+      +st+'</div>'+det+btn+'</div>';
+  }).join('');
+}
+
+/* ---- botões do formulário de atualização ---- */
+function setPorte(p){
+  selPorte = (selPorte === p) ? '' : p;
+  document.querySelectorAll('[data-porte]').forEach(function(b){
+    b.className = 'pill' + (b.getAttribute('data-porte')===selPorte ? ' on' : '');
+  });
+}
+function toqueDia(d){
+  if(selDias.hasOwnProperty(d)){ delete selDias[d]; } else { selDias[d] = ''; }
+  renderDias();
+}
+function setPeriodo(d, per){
+  selDias[d] = (selDias[d] === per) ? '' : per;
+  renderDias();
+}
+function renderDias(){
+  document.querySelectorAll('[data-dia]').forEach(function(b){
+    b.className = 'pill' + (selDias.hasOwnProperty(b.getAttribute('data-dia')) ? ' on' : '');
+  });
+  var sel = ORDEM.filter(function(d){return selDias.hasOwnProperty(d);});
+  document.getElementById('diasPeriodo').innerHTML = sel.map(function(d){
+    return '<div class="dia-per">'
+      +'<span style="font-size:13px; font-weight:600;">'+d+'</span>'
+      +'<div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">'
+      +'<button type="button" class="pill mini'+(selDias[d]==='Manhã'?' on':'')+'" onclick="setPeriodo(\''+d+'\',\'Manhã\')">Manhã</button>'
+      +'<button type="button" class="pill mini'+(selDias[d]==='Tarde'?' on':'')+'" onclick="setPeriodo(\''+d+'\',\'Tarde\')">Tarde</button>'
+      +'<button type="button" class="pill mini'+(selDias[d]==='Dia todo'?' on':'')+'" onclick="setPeriodo(\''+d+'\',\'Dia todo\')">Dia todo</button>'
+      +'</div></div>';
+  }).join('');
+}
+function toqueFmt(f){
+  var i = selFmts.indexOf(f);
+  if(i>=0){ selFmts.splice(i,1); } else { selFmts.push(f); }
+  document.querySelectorAll('[data-fmt]').forEach(function(b){
+    b.className = 'pill mini' + (selFmts.indexOf(b.getAttribute('data-fmt'))>=0 ? ' on' : '');
+  });
+}
+function paintAcesso(){
+  document.querySelectorAll('[data-ac]').forEach(function(b){
+    b.className = 'pill mini' + (selAcesso.indexOf(b.getAttribute('data-ac'))>=0 ? ' on' : '');
+  });
+}
+function toqueAcesso(a){
+  if(a === 'Não tem acesso'){
+    selAcesso = (selAcesso.indexOf(a)>=0) ? [] : ['Não tem acesso'];
+  } else {
+    var n = selAcesso.indexOf('Não tem acesso');
+    if(n>=0) selAcesso.splice(n,1);
+    var i = selAcesso.indexOf(a);
+    if(i>=0){ selAcesso.splice(i,1); } else { selAcesso.push(a); }
+  }
+  paintAcesso();
+}
+function paintConhece(){
+  document.querySelectorAll('[data-rca]').forEach(function(b){
+    b.className = 'pill mini' + (b.getAttribute('data-rca')===selConhece ? ' on' : '');
+  });
+}
+function setConhece(v){ selConhece = (selConhece===v) ? '' : v; paintConhece(); }
+function paintFreq(){
+  document.querySelectorAll('[data-freq]').forEach(function(b){
+    b.className = 'pill mini' + (b.getAttribute('data-freq')===selFreq ? ' on' : '');
+  });
+}
+function setFreq(v){ selFreq = (selFreq===v) ? '' : v; paintFreq(); }
+
+function abrirAtualizacao(k){
+  cliChave = k;
+  var c = CLIENTES[k];
+  if(!c) return;
+  document.getElementById('mNome').textContent = c.nome;
+  document.getElementById('mInfo').textContent = (c.end||'')+' · '+(c.cid||'')+' · Cód. '+c.cod;
+  var r = c.reg || {};
+  selPorte = r.porte || '';
+  document.querySelectorAll('[data-porte]').forEach(function(b){
+    b.className = 'pill' + (b.getAttribute('data-porte')===selPorte ? ' on' : '');
+  });
+  selDias = {};
+  if(r.dias){ Object.keys(r.dias).forEach(function(d){ selDias[d] = r.dias[d]; }); }
+  renderDias();
+  selFmts = (r.fmts || []).slice();
+  document.querySelectorAll('[data-fmt]').forEach(function(b){
+    b.className = 'pill mini' + (selFmts.indexOf(b.getAttribute('data-fmt'))>=0 ? ' on' : '');
+  });
+  selAcesso = (r.acessos || []).slice();
+  selConhece = r.conheceRca || '';
+  selFreq = r.freqRca || '';
+  paintAcesso(); paintConhece(); paintFreq();
+  document.getElementById('mCompNome').value = r.compNome||'';
+  document.getElementById('mCompTel').value = r.compTel||'';
+  document.getElementById('mPropNome').value = r.propNome||'';
+  document.getElementById('mPropTel').value = r.propTel||'';
+  document.getElementById('mObs').value = r.obs||'';
+  document.getElementById('modalCheck').style.display = 'block';
+  window.scrollTo({top:0});
+}
+function fecharModal(){
+  document.getElementById('modalCheck').style.display = 'none';
+  cliChave = null;
+}
+function salvarAtualizacao(){
+  if(!cliChave) return;
+  if(!selPorte){ alert('Informe pelo menos o porte da loja.'); return; }
+  var semPeriodo = ORDEM.filter(function(d){return selDias.hasOwnProperty(d) && !selDias[d];});
+  if(semPeriodo.length){ alert('Escolha Manhã, Tarde ou Dia todo para: '+semPeriodo.join(', ')); return; }
+  var dias = {};
+  ORDEM.forEach(function(d){ if(selDias[d]) dias[d] = selDias[d]; });
+  var reg = {
+    porte: selPorte,
+    dias: dias,
+    fmts: selFmts.slice(),
+    acessos: selAcesso.slice(),
+    conheceRca: selConhece,
+    freqRca: selFreq,
+    compNome: document.getElementById('mCompNome').value.trim(),
+    compTel: document.getElementById('mCompTel').value.trim(),
+    propNome: document.getElementById('mPropNome').value.trim(),
+    propTel: document.getElementById('mPropTel').value.trim(),
+    obs: document.getElementById('mObs').value.trim(),
+    quando: new Date().toLocaleString('pt-BR')
+  };
+  RAIZ.child('clientes/'+cliChave).update({
+    st: 'vis', reg: reg, colab: (COLABS[user] ? COLABS[user].nome : user)
+  }).then(fecharModal).catch(function(e){ alert('Erro ao salvar: '+e.message); });
+}
+function lojaNaoExiste(){
+  if(!cliChave) return;
+  var c = CLIENTES[cliChave];
+  if(!confirm('Confirmar que a loja "'+c.nome+'" não existe no endereço?')) return;
+  RAIZ.child('clientes/'+cliChave).update({
+    st: 'fec',
+    reg: { quando: new Date().toLocaleString('pt-BR') },
+    colab: (COLABS[user] ? COLABS[user].nome : user)
+  }).then(fecharModal).catch(function(e){ alert('Erro ao salvar: '+e.message); });
+}
+
+/* ============ GESTOR ============ */
+function fillSelects(){
+  var opts = UFS.map(function(u){return '<option'+(u==='SP'?' selected':'')+'>'+u+'</option>'}).join('');
+  if(document.getElementById('fUf').innerHTML==='') document.getElementById('fUf').innerHTML = opts;
+  if(document.getElementById('tUf').innerHTML==='') document.getElementById('tUf').innerHTML = opts;
+  var cur = document.getElementById('selUf').value || 'SP';
+  document.getElementById('selUf').innerHTML = UFS.map(function(u){
+    var n = cliArr().filter(function(c){return c.uf===u}).length;
+    return '<option value="'+u+'"'+(u===cur?' selected':'')+'>'+u+(n?' ('+n+')':'')+'</option>';
+  }).join('');
+}
+function kpis(){
+  var arr = cliArr();
+  document.getElementById('kCli').textContent = arr.length;
+  document.getElementById('kTet').textContent = Object.keys(tetsAll()).length;
+  document.getElementById('kUf').textContent = ufsAtivas().length;
+  document.getElementById('kVis').textContent = arr.filter(function(c){return c.st==='vis'}).length;
+  document.getElementById('kFec').textContent = arr.filter(function(c){return c.st==='fec'}).length;
+  document.getElementById('kPen').textContent = arr.filter(function(c){return c.st==='pen'}).length;
+}
+function renderAprov(){
+  var pends = Object.keys(COLABS).filter(function(l){return COLABS[l].status==='pend';});
+  var sec = document.getElementById('secAprov');
+  if(!pends.length){ sec.style.display='none'; return; }
+  sec.style.display = 'block';
+  document.getElementById('nAprov').textContent = pends.length;
+  var map = tetsAll();
+  document.getElementById('listAprov').innerHTML = pends.map(function(l, i){
+    var a = COLABS[l];
+    var ini = a.nome.split(' ').map(function(p){return p[0]}).slice(0,2).join('').toUpperCase();
+    var ts = Object.keys(map).filter(function(t){return map[t]===a.uf}).sort();
+    var chks = ts.length
+      ? ts.map(function(t){return '<label class="chk" style="font-size:12px; padding:5px 9px;"><input type="checkbox" class="apChk'+i+'" value="'+t+'"> '+t+'</label>'}).join('')
+      : '<span class="meta">Nenhum TET em '+a.uf+' ainda — suba um TET antes de aprovar, ou aprove sem TET e atribua depois.</span>';
+    return '<div class="card pend">'
+      +'<div class="linha"><div class="avatar" style="background:var(--amar-bg); color:var(--amar);">'+ini+'</div>'
+      +'<div><div class="nome">'+a.nome+'</div>'
+      +'<div class="meta">login: '+l+' · '+a.uf+(a.solicitadoEm?' · solicitado em '+a.solicitadoEm:'')+'</div></div></div>'
+      +'<label style="margin-top:4px;">Atribuir TETs de '+a.uf+'</label>'
+      +'<div style="display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 12px;">'+chks+'</div>'
+      +'<div style="display:flex; gap:8px;">'
+      +'<button class="ok" onclick="aprovar(\''+l+'\','+i+')">✓ Aprovar</button>'
+      +'<button class="perigo" onclick="recusar(\''+l+'\')">✕ Recusar</button>'
+      +'</div></div>';
+  }).join('');
+}
+function aprovar(login, i){
+  var a = COLABS[login];
+  var tets = Array.prototype.slice.call(document.querySelectorAll('.apChk'+i+':checked')).map(function(c){return c.value});
+  if(!tets.length && !confirm('Aprovar "'+a.nome+'" sem nenhum TET atribuído? Ele ficará sem carteira até você atribuir.')) return;
+  RAIZ.child('colaboradores/'+login).update({status:'ok', tets:tets})
+    .then(function(){ mostraMsg('Colaborador "'+a.nome+'" aprovado'+(tets.length?' com '+tets.length+' TET(s)':'')+'.', 'ok'); })
+    .catch(function(e){ mostraMsg('Erro: '+e.message, 'erro'); });
+}
+function recusar(login){
+  var a = COLABS[login];
+  if(!confirm('Recusar o cadastro de "'+a.nome+'"? O acesso dele será excluído.')) return;
+  RAIZ.child('colaboradores/'+login).remove()
+    .then(function(){ mostraMsg('Cadastro de "'+a.nome+'" recusado.', 'ok'); })
+    .catch(function(e){ mostraMsg('Erro: '+e.message, 'erro'); });
+}
+function renderColabs(){
+  var arr = cliArr();
+  var logins = Object.keys(COLABS).filter(function(l){return COLABS[l].status==='ok';}).sort();
+  document.getElementById('listColab').innerHTML = logins.map(function(l){
+    var c = COLABS[l];
+    var ini = c.nome.split(' ').map(function(p){return p[0]}).slice(0,2).join('').toUpperCase();
+    var cart = arr.filter(function(x){return c.tets.indexOf(x.tet)>=0});
+    var done = cart.filter(function(x){return x.st!=='pen'}).length;
+    var pct = cart.length ? Math.round(done/cart.length*100) : 0;
+    var tags = c.tets.length
+      ? c.tets.map(function(t){return '<span class="badge b-azul">'+t+'</span>'}).join('')
+      : '<span class="badge b-amar">Sem TET atribuído</span>';
+    return '<div class="card">'
+      +'<div class="linha"><div class="avatar">'+ini+'</div>'
+      +'<div><div class="nome">'+c.nome+'</div>'
+      +'<div class="meta">login: '+l+' · '+c.uf+' · '+cart.length+' clientes</div></div></div>'
+      +'<div class="barra"><div style="width:'+pct+'%"></div></div>'
+      +'<div class="meta">'+done+' de '+cart.length+' atualizados ('+pct+'%)</div>'
+      +'<div class="tags">'+tags+'</div></div>';
+  }).join('') || '<div class="card meta">Nenhum colaborador aprovado ainda.</div>';
+}
+function renderTerr(){
+  var uf = document.getElementById('selUf').value || 'SP';
+  var map = {};
+  cliArr().forEach(function(c){ if(c.uf===uf){ (map[c.tet]=map[c.tet]||[]).push(c); } });
+  var h = Object.keys(map).sort().map(function(t){
+    var arr = map[t];
+    var resp = Object.keys(COLABS).filter(function(l){
+      return COLABS[l].status==='ok' && COLABS[l].tets.indexOf(t)>=0;
+    }).map(function(l){return COLABS[l].nome.split(' ')[0]});
+    var badge = resp.length
+      ? '<span class="badge b-verde">'+resp.join(', ')+'</span>'
+      : '<span class="badge b-amar">Sem colaborador</span>';
+    var done = arr.filter(function(x){return x.st!=='pen'}).length;
+    return '<div class="card clic" onclick="openDrill(\''+t.replace(/'/g,"\\'")+'\')">'
+      +'<div class="nome" style="margin-bottom:2px;">'+t+'</div>'
+      +'<div class="meta" style="margin-bottom:9px;">'+uf+' · '+arr.length+' clientes · '+done+' atualizados</div>'
+      +badge+'</div>';
+  }).join('');
+  document.getElementById('listTerr').innerHTML = h || '<div class="meta">Nenhum TET nesta UF ainda. Use o botão "Subir TET".</div>';
+}
+function detalheHTML(c){
+  if(!c.reg) return '<span class="meta">Sem dados coletados ainda.</span>';
+  if(c.st==='fec'){
+    return '<div class="det-grid">'
+      +'<div class="det-item"><div class="dl">Status</div><div class="dv"><span class="badge b-verm">Loja não existe</span></div></div>'
+      +'<div class="det-item"><div class="dl">Registrado por</div><div class="dv">'+(c.colab||'—')+'</div></div>'
+      +'<div class="det-item"><div class="dl">Quando</div><div class="dv">'+(c.reg.quando||'—')+'</div></div>'
+      +'</div>';
+  }
+  var r = c.reg;
+  function bloco(lbl, val){
+    return '<div class="det-item"><div class="dl">'+lbl+'</div><div class="dv">'+(val||'<span style="color:var(--txt3)">—</span>')+'</div></div>';
+  }
+  var acessos = (r.acessos && r.acessos.length)
+    ? r.acessos.map(function(a){return '<span class="badge '+(a==='Não tem acesso'?'b-verm':'b-azul')+'">'+a+'</span>'}).join(' ') : '';
+  var fmts = (r.fmts && r.fmts.length)
+    ? r.fmts.map(function(f){return '<span class="badge b-cinza">'+f+'</span>'}).join(' ') : '';
+  return '<div class="det-grid">'
+    + bloco('Porte da loja', r.porte ? '<span class="badge b-azul">'+r.porte+'</span>' : '')
+    + bloco('Dias de compra', resumoDias(r.dias))
+    + bloco('Formato de compras', fmts)
+    + bloco('Acesso ao Martins', acessos)
+    + bloco('Conhece o RCA', r.conheceRca)
+    + bloco('Frequência de visita do RCA', r.freqRca)
+    + bloco('Comprador', (r.compNome||'') + (r.compTel ? ' · '+r.compTel : ''))
+    + bloco('Proprietário', (r.propNome||'') + (r.propTel ? ' · '+r.propTel : ''))
+    + bloco('Registrado por', (c.colab||'') + (r.quando ? ' · '+r.quando : ''))
+    + (r.obs ? bloco('Observações', r.obs) : '')
+    +'</div>';
+}
+function toggleDet(id){
+  var tr = document.getElementById(id);
+  if(tr) tr.style.display = tr.style.display==='none' ? 'table-row' : 'none';
+}
+function openDrill(t){
+  var arr = cliArr().filter(function(c){return c.tet===t});
+  document.getElementById('drillTitle').textContent = t+' — carteira ('+arr.length+' clientes)';
+  var rows = arr.map(function(c, i){
+    var st = c.st==='vis' ? '<span class="badge b-verde">Atualizado</span>'
+      : c.st==='fec' ? '<span class="badge b-verm">Não existe</span>'
+      : '<span class="badge b-amar">Pendente</span>';
+    var did = 'det_'+i;
+    return '<tr class="linhacli" onclick="toggleDet(\''+did+'\')">'
+      +'<td style="color:var(--txt2)">'+c.cod+'</td><td>'+c.nome+'</td>'
+      +'<td style="color:var(--txt2)">'+(c.end||'')+'</td><td style="color:var(--txt2)">'+(c.cid||'')+'</td>'
+      +'<td>'+st+'</td></tr>'
+      +'<tr id="'+did+'" class="detalhe" style="display:none;"><td colspan="5">'+detalheHTML(c)+'</td></tr>';
+  }).join('');
+  document.getElementById('drillBody').innerHTML =
+    '<table><tr><th>Código</th><th>Cliente</th><th>Endereço</th><th>Cidade</th><th>Status</th></tr>'+rows+'</table>';
+  var d = document.getElementById('drill');
+  d.style.display = 'block';
+  d.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+/* ---- Subir TET ---- */
+function toggleSubir(){
+  var f = document.getElementById('formTet');
+  f.style.display = f.style.display==='none' || !f.style.display ? 'block' : 'none';
+}
+function cancelarSubir(){
+  pendUpload = null;
+  document.getElementById('preview').style.display='none';
+  document.getElementById('xlsTet').value='';
+  document.getElementById('formTet').style.display='none';
+  document.getElementById('dropZone').textContent = 'Clique para selecionar a planilha enviada pelo GT';
+}
+function lerPlanilha(ev){
+  var file = ev.target.files[0];
+  if(!file) return;
+  document.getElementById('dropZone').textContent = '📄 ' + file.name;
+  var rd = new FileReader();
+  rd.onload = function(e){
+    try{
+      var wb = XLSX.read(e.target.result, {type:'array'});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      rows = rows.filter(function(r){ return r.some(function(x){return String(x).trim()!=='';}); });
+      if(rows.length < 2){ mostraMsg('A planilha está vazia ou só tem cabeçalho.', 'erro'); return; }
+      var hd = rows[0].map(function(h){return norm(h).trim();});
+      function col(names){
+        for(var i=0;i<hd.length;i++){ for(var j=0;j<names.length;j++){ if(hd[i].indexOf(names[j])>=0) return i; } }
+        return -1;
+      }
+      var iCod = col(['COD']);
+      var iNome = col(['RAZAO','FANTASIA','NOME','CLIENTE']);
+      var iEnd = col(['ENDER','LOGRAD','RUA','AV.']);
+      var iCid = col(['CIDADE','MUNIC']);
+      if(iCod<0 && iNome<0){
+        mostraMsg('Não encontrei colunas de código nem de razão social. Cabeçalho lido: '+rows[0].join(' | '), 'erro');
+        return;
+      }
+      var cli = [];
+      for(var i=1;i<rows.length;i++){
+        var r = rows[i];
+        var nome = iNome>=0 ? String(r[iNome]).trim() : '';
+        var cod = iCod>=0 ? String(r[iCod]).trim() : '';
+        if(!nome && !cod) continue;
+        cli.push({
+          cod: cod,
+          nome: nome || 'Cliente '+cod,
+          end: iEnd>=0 ? String(r[iEnd]).trim() : '',
+          cid: iCid>=0 ? String(r[iCid]).trim() : ''
+        });
+      }
+      pendUpload = cli;
+      var mapeadas = ['Código: '+(iCod>=0?rows[0][iCod]:'—'), 'Razão: '+(iNome>=0?rows[0][iNome]:'—'),
+                      'Endereço: '+(iEnd>=0?rows[0][iEnd]:'—'), 'Cidade: '+(iCid>=0?rows[0][iCid]:'—')];
+      var pi = document.getElementById('prevInfo');
+      pi.textContent = cli.length+' clientes lidos da planilha · Colunas filtradas → '+mapeadas.join(' · ');
+      pi.style.background='var(--azul-bg)'; pi.style.color='var(--azul)';
+      var prev = cli.slice(0,8).map(function(c){
+        return '<tr><td style="color:var(--txt2)">'+c.cod+'</td><td>'+c.nome+'</td><td style="color:var(--txt2)">'+c.end+'</td><td style="color:var(--txt2)">'+c.cid+'</td></tr>';
+      }).join('');
+      document.getElementById('prevTable').innerHTML =
+        '<table><tr><th>Código</th><th>Cliente</th><th>Endereço</th><th>Cidade</th></tr>'+prev
+        +(cli.length>8?'<tr><td colspan="4" style="color:var(--txt3)">… e mais '+(cli.length-8)+' clientes</td></tr>':'')+'</table>';
+      document.getElementById('preview').style.display='block';
+    }catch(err){
+      mostraMsg('Erro ao ler a planilha: '+err.message, 'erro');
+    }
+  };
+  rd.readAsArrayBuffer(file);
+}
+function criarTet(){
+  var nome = norm(document.getElementById('tNome').value).trim();
+  var uf = document.getElementById('tUf').value;
+  if(!nome){ alert('Digite o nome do TET.'); return; }
+  if(!pendUpload || !pendUpload.length){ alert('Selecione a planilha do GT primeiro.'); return; }
+  var existentes = Object.keys(CLIENTES).filter(function(k){return CLIENTES[k].tet===nome;});
+  if(existentes.length && !confirm('O TET "'+nome+'" já existe com '+existentes.length+' clientes. Substituir pela nova planilha?')) return;
+  var updates = {};
+  existentes.forEach(function(k){ updates[k] = null; });
+  var qtd = pendUpload.length;
+  pendUpload.forEach(function(c, i){
+    var k = chaveSegura(nome)+'__'+ (c.cod ? chaveSegura(c.cod) : 'i'+i) + '_' + i;
+    updates[k] = {cod:c.cod, nome:c.nome, end:c.end, cid:c.cid, uf:uf, tet:nome, st:'pen'};
+  });
+  RAIZ.child('clientes').update(updates).then(function(){
+    mostraMsg('TET "'+nome+'" criado em '+uf+' com '+qtd+' clientes. Agora atribua a um colaborador.', 'ok');
+    document.getElementById('tNome').value='';
+    cancelarSubir();
+    document.getElementById('selUf').value = uf;
+  }).catch(function(e){ mostraMsg('Erro ao salvar: '+e.message, 'erro'); });
+}
+function mostraMsg(txt, tipo){
+  var m = document.getElementById('upMsg');
+  m.textContent = txt;
+  m.style.background = tipo==='ok' ? 'var(--verde-bg)' : 'var(--verm-bg)';
+  m.style.color = tipo==='ok' ? 'var(--verde)' : 'var(--verm)';
+  m.style.display = 'block';
+}
+
+/* ---- cadastro manual de colaborador ---- */
+function toggleForm(){
+  var f = document.getElementById('formColab');
+  f.style.display = f.style.display==='none' || !f.style.display ? 'block' : 'none';
+  if(f.style.display==='block') renderTetChecks();
+}
+function sugLogin(){
+  var n = document.getElementById('fNome').value.trim().split(' ')[0].toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  document.getElementById('fLogin').value = n;
+  document.getElementById('fSenha').value = n ? n+'10' : '';
+}
+function renderTetChecks(){
+  var uf = document.getElementById('fUf').value;
+  var map = tetsAll();
+  var ts = Object.keys(map).filter(function(t){return map[t]===uf}).sort();
+  document.getElementById('fTets').innerHTML = ts.length
+    ? ts.map(function(t){return '<label class="chk"><input type="checkbox" class="tetChk" value="'+t+'"> '+t+'</label>'}).join('')
+    : '<span class="meta">Nenhum TET nesta UF. Suba um TET primeiro.</span>';
+}
+function saveColab(){
+  var nome = document.getElementById('fNome').value.trim();
+  var login = (document.getElementById('fLogin').value.trim().toLowerCase() || nome.toLowerCase()).replace(/[^a-z0-9]/g,'');
+  var senha = document.getElementById('fSenha').value.trim() || login+'10';
+  if(!nome){ alert('Informe o nome do colaborador.'); return; }
+  if(!login){ alert('Informe o login.'); return; }
+  if(login === GESTOR_LOGIN || COLABS[login]){ alert('Este login já está em uso.'); return; }
+  var tets = Array.prototype.slice.call(document.querySelectorAll('.tetChk:checked')).map(function(c){return c.value});
+  RAIZ.child('colaboradores/'+login).set({
+    nome: nome, senha: senha, uf: document.getElementById('fUf').value,
+    status: 'ok', tets: tets,
+    solicitadoEm: new Date().toLocaleString('pt-BR')
+  }).then(function(){
+    document.getElementById('fNome').value=''; document.getElementById('fLogin').value=''; document.getElementById('fSenha').value='';
+    toggleForm();
+    mostraMsg('Colaborador "'+nome+'" criado (login: '+login+' / senha: '+senha+').', 'ok');
+  }).catch(function(e){ alert('Erro: '+e.message); });
+}
+
+/* ---- export ---- */
+function exportCSV(){
+  var out = 'Codigo;Cliente;Endereco;Cidade;UF;TET;Status;Colaborador;Porte;DiasDeCompra;FormatoCompras;AcessoMartins;ConheceRCA;FreqVisitaRCA;CompradorNome;CompradorTel;ProprietarioNome;ProprietarioTel;Observacoes;Quando\n';
+  cliArr().forEach(function(c){
+    var r = c.reg || {};
+    out += [
+      c.cod, c.nome, (c.end||''), (c.cid||''), c.uf, c.tet,
+      (c.st==='vis'?'Atualizado':c.st==='fec'?'Nao existe':'Pendente'),
+      (c.colab||''), (r.porte||''), resumoDias(r.dias),
+      (r.fmts||[]).join(', '), (r.acessos||[]).join(', '),
+      (r.conheceRca||''), (r.freqRca||''),
+      (r.compNome||''), (r.compTel||''), (r.propNome||''), (r.propTel||''),
+      (r.obs||'').replace(/;/g,','), (r.quando||'')
+    ].join(';')+'\n';
+  });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(["\ufeff"+out],{type:'text/csv;charset=utf-8'}));
+  a.download = 'validacao_tet_completo.csv';
+  a.click();
+}
+
+/* ============ INICIALIZAÇÃO ============ */
+document.getElementById('cUf').innerHTML = UFS.map(function(u){return '<option'+(u==='SP'?' selected':'')+'>'+u+'</option>'}).join('');
+mostraTela('telaLogin');
+</script>
+</body>
+</html>
