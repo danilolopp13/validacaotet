@@ -29,6 +29,7 @@
   button.ok:hover{background:#16613c;}
   button.perigo{background:var(--verm-bg); border-color:#eccfcb; color:var(--verm); font-weight:600;}
   button.cheio{width:100%; font-size:14px; padding:11px 16px; border-radius:10px;}
+  button:disabled{opacity:.5; cursor:not-allowed;}
   input, select, textarea{font-family:inherit; font-size:14px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--txt); width:100%;}
   label{font-size:12px; color:var(--txt2); display:block; margin:0 0 4px;}
   .card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:15px 16px;}
@@ -46,7 +47,8 @@
   .nome{font-weight:600; font-size:14px;}
   .meta{font-size:12.5px; color:var(--txt2);}
   .barra{height:7px; background:#edf0f3; border-radius:4px; overflow:hidden; margin:8px 0 4px;}
-  .barra > div{height:100%; background:var(--verde); border-radius:4px;}
+  .barra > div{height:100%; background:var(--verde); border-radius:4px; transition:width .3s;}
+  .barra.azul > div{background:var(--azul);}
   .tags{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
   table{width:100%; border-collapse:collapse;}
   th{text-align:left; font-size:11.5px; color:var(--txt2); font-weight:600; padding:7px 8px; border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:.3px;}
@@ -291,33 +293,54 @@
   <div class="topo">
     <div>
       <h1>Validação de TET — Brasil</h1>
-      <div class="meta">Visão gestor · Danilo Lopes</div>
+      <div class="meta">Visão gestor · Danilo Lopes · <span id="matrizInfo">matriz: carregando…</span></div>
     </div>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
       <button class="primario" onclick="toggleSubir()">⬆ Subir TET</button>
+      <button onclick="toggleMatriz()">🗂 Atualizar matriz</button>
       <button onclick="exportCSV()">⬇ Exportar CSV</button>
       <button onclick="sair()">Sair</button>
     </div>
   </div>
 
+  <!-- ---- Atualizar matriz ---- -->
+  <div id="formMatriz" class="card" style="display:none; margin-bottom:16px;">
+    <div class="nome" style="margin-bottom:6px;">Atualizar matriz de clientes</div>
+    <div class="meta" style="margin-bottom:10px;">Suba o arquivo GESTAO_CLIENTES_COMPLETA (CSV exportado do Tableau). O sistema extrai só os campos necessários e grava no banco. Faça isso uma vez e repita quando a matriz mudar. Não feche a página durante o envio.</div>
+    <div class="drop" onclick="document.getElementById('csvMatriz').click()" id="dropMatriz">
+      Clique para selecionar o CSV da matriz
+    </div>
+    <input type="file" id="csvMatriz" accept=".csv" style="display:none" onchange="carregarMatriz(event)">
+    <div id="progMatriz" style="display:none; margin-top:12px;">
+      <div class="barra azul"><div id="progMatrizBar" style="width:0%"></div></div>
+      <div class="meta" id="progMatrizTxt" style="margin-top:6px;"></div>
+    </div>
+  </div>
+
+  <!-- ---- Subir TET ---- -->
   <div id="formTet" class="card" style="display:none; margin-bottom:16px;">
-    <div class="nome" style="margin-bottom:10px;">Subir novo TET</div>
+    <div class="nome" style="margin-bottom:6px;">Subir novo TET</div>
+    <div class="meta" style="margin-bottom:10px;">A planilha só precisa ter os <b>códigos dos clientes</b> (CODCLIENTE) — o sistema busca razão social, endereço, cidade e UF na matriz automaticamente. Pode subir qualquer modelo de planilha (.xlsx ou .csv).</div>
     <div class="form-grid">
       <div><label>Nome do TET</label><input type="text" id="tNome" placeholder="ex: TET OSASCO"></div>
-      <div><label>UF do TET</label><select id="tUf"></select></div>
+      <div><label>UF do TET (preenchida automática pela matriz, pode ajustar)</label><select id="tUf"></select></div>
     </div>
-    <label>Planilha do GT (Excel .xlsx ou .csv) — o sistema filtra automaticamente código, razão social e endereço</label>
     <div class="drop" onclick="document.getElementById('xlsTet').click()" id="dropZone">
-      Clique para selecionar a planilha enviada pelo GT
+      Clique para selecionar a planilha com os códigos dos clientes
     </div>
-    <input type="file" id="xlsTet" accept=".xlsx,.xls,.csv" style="display:none" onchange="lerPlanilha(event)">
+    <input type="file" id="xlsTet" accept=".xlsx,.xls,.csv" style="display:none" onchange="lerPlanilhaTet(event)">
+    <div id="progTet" style="display:none; margin-top:12px;">
+      <div class="barra azul"><div id="progTetBar" style="width:0%"></div></div>
+      <div class="meta" id="progTetTxt" style="margin-top:6px;"></div>
+    </div>
     <div id="preview" style="display:none; margin-top:12px;">
       <div id="prevInfo" class="aviso" style="display:block; margin-bottom:10px;"></div>
-      <div style="overflow-x:auto; max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;">
+      <div id="prevFalta" class="aviso" style="margin-bottom:10px;"></div>
+      <div style="overflow-x:auto; max-height:260px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;">
         <div id="prevTable"></div>
       </div>
       <div style="display:flex; gap:8px; margin-top:12px;">
-        <button class="primario" onclick="criarTet()">Criar TET com estes clientes</button>
+        <button class="primario" id="btnCriarTet" onclick="criarTet()">Criar TET com estes clientes</button>
         <button onclick="cancelarSubir()">Cancelar</button>
       </div>
     </div>
@@ -384,16 +407,15 @@
 firebase.initializeApp({ databaseURL: "https://varlopex-default-rtdb.firebaseio.com" });
 var RAIZ = firebase.database().ref('validacao_tet');
 
-var GESTOR_LOGIN = "adm", GESTOR_SENHA = "adm10", GESTOR_NOME = "Danilo Lopes";
+var GESTOR_LOGIN = "adm", GESTOR_SENHA = "adm10";
 var UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
 var ORDEM = ['Seg','Ter','Qua','Qui','Sex','Sáb'];
 
-var COLABS = {};        /* login -> {nome, senha, uf, status, tets:[]} */
-var CLIENTES = {};      /* chave -> {cod, nome, end, cid, uf, tet, st, reg, colab} */
-var user = null;        /* login do colaborador logado, ou 'adm' */
-var papel = null;       /* 'colab' ou 'gestor' */
-var aba = 'pen', cliChave = null, pendUpload = null, prontoColab = false, prontoCli = false;
+var COLABS = {}, CLIENTES = {};
+var user = null, papel = null;
+var aba = 'pen', cliChave = null, prontoColab = false, prontoCli = false;
 var selPorte = '', selDias = {}, selFmts = [], selAcesso = [], selConhece = '', selFreq = '';
+var tetPend = null; /* clientes resolvidos aguardando criação */
 
 function norm(s){ return String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 function chaveSegura(s){ return String(s).replace(/[.#$\[\]\/]/g,'_'); }
@@ -405,7 +427,7 @@ function resumoDias(dias){
     .map(function(d){return d+' ('+dias[d]+')';}).join(', ');
 }
 
-/* ============ LISTENERS EM TEMPO REAL ============ */
+/* ============ LISTENERS ============ */
 RAIZ.child('colaboradores').on('value', function(snap){
   COLABS = snap.val() || {};
   Object.keys(COLABS).forEach(function(k){ if(!COLABS[k].tets) COLABS[k].tets = []; });
@@ -416,6 +438,14 @@ RAIZ.child('clientes').on('value', function(snap){
   CLIENTES = snap.val() || {};
   prontoCli = true; aoAtualizar();
 }, function(){ prontoCli = true; aoAtualizar(); });
+
+RAIZ.child('matrizMeta').on('value', function(snap){
+  var m = snap.val();
+  var el = document.getElementById('matrizInfo');
+  el.textContent = m && m.qtd
+    ? 'matriz: '+Number(m.qtd).toLocaleString('pt-BR')+' clientes ('+(m.quando||'')+')'
+    : 'matriz: vazia — use Atualizar matriz';
+});
 
 function aoAtualizar(){
   if(prontoColab && prontoCli) document.getElementById('carregando').style.display = 'none';
@@ -558,17 +588,18 @@ function renderLista(){
     var btn = c.st==='pen'
       ? '<button class="primario" style="margin-top:10px; width:100%;" onclick="abrirAtualizacao(\''+c._k+'\')">Atualização de dados</button>'
       : '<button style="margin-top:10px; width:100%; font-size:12.5px;" onclick="abrirAtualizacao(\''+c._k+'\')">Editar atualização</button>';
-    var mapa = 'https://www.google.com/maps/search/'+encodeURIComponent(c.nome+' '+(c.end||'')+' '+(c.cid||''));
+    var destino = (c.end ? c.end+', ' : '')+(c.cid||'')+((c.uf)?' - '+c.uf:'')+(c.cep?', '+c.cep:'');
+    var mapa = 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destino || c.nome);
     return '<div class="card cli">'
       +'<div style="display:flex; justify-content:space-between; gap:8px; align-items:start;">'
       +'<div><div class="nome">'+c.nome+'</div>'
       +'<div class="meta">'+(c.end||'')+' · '+(c.cid||'')+'</div>'
-      +'<div class="meta" style="color:var(--txt3);">Cód. '+c.cod+' · '+c.tet+' · <a href="'+mapa+'" target="_blank" style="color:var(--azul);">Ver no mapa</a></div></div>'
+      +'<div class="meta" style="color:var(--txt3);">Cód. '+c.cod+' · '+c.tet+' · <a href="'+mapa+'" target="_blank" style="color:var(--azul);">📍 Traçar rota</a></div></div>'
       +st+'</div>'+det+btn+'</div>';
   }).join('');
 }
 
-/* ---- botões do formulário de atualização ---- */
+/* ---- botões do formulário ---- */
 function setPorte(p){
   selPorte = (selPorte === p) ? '' : p;
   document.querySelectorAll('[data-porte]').forEach(function(b){
@@ -832,6 +863,8 @@ function detalheHTML(c){
     + bloco('Frequência de visita do RCA', r.freqRca)
     + bloco('Comprador', (r.compNome||'') + (r.compTel ? ' · '+r.compTel : ''))
     + bloco('Proprietário', (r.propNome||'') + (r.propTel ? ' · '+r.propTel : ''))
+    + bloco('CNPJ', c.cnpj)
+    + bloco('Telefone (matriz)', c.tel)
     + bloco('Registrado por', (c.colab||'') + (r.quando ? ' · '+r.quando : ''))
     + (r.obs ? bloco('Observações', r.obs) : '')
     +'</div>';
@@ -861,19 +894,178 @@ function openDrill(t){
   d.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
-/* ---- Subir TET ---- */
+/* ============ ATUALIZAR MATRIZ ============ */
+function toggleMatriz(){
+  var f = document.getElementById('formMatriz');
+  f.style.display = f.style.display==='none' || !f.style.display ? 'block' : 'none';
+}
+function carregarMatriz(ev){
+  var file = ev.target.files[0];
+  if(!file) return;
+  if(!confirm('Atualizar a matriz com "'+file.name+'"? O envio pode levar alguns minutos. Não feche a página.')){ ev.target.value=''; return; }
+  document.getElementById('dropMatriz').textContent = '📄 ' + file.name;
+  document.getElementById('progMatriz').style.display = 'block';
+
+  var TAM_PEDACO = 4*1024*1024; /* 4 MB por leitura */
+  var LOTE = 1000;              /* clientes por gravação */
+  var decoder = new TextDecoder('utf-8');
+  var resto = '', header = null, idx = {};
+  var lote = {}, tamLote = 0, totalLidos = 0, totalGravados = 0;
+  var pos = 0;
+  var barra = document.getElementById('progMatrizBar');
+  var txt = document.getElementById('progMatrizTxt');
+
+  function achaCol(nomes){
+    for(var i=0;i<header.length;i++){
+      var h = norm(header[i]).trim();
+      for(var j=0;j<nomes.length;j++){ if(h.indexOf(nomes[j])>=0) return i; }
+    }
+    return -1;
+  }
+  function processaLinha(linha){
+    if(!linha.trim()) return;
+    var p = linha.split(';');
+    if(!header){
+      header = p;
+      idx = {
+        cod: achaCol(['CODCLIEND','CODCLI']),
+        raz: achaCol(['RAZAO']),
+        fan: achaCol(['FANTASIA']),
+        end: achaCol(['ENDRE','ENDERE','LOGRAD']),
+        num: achaCol(['NUMERO']),
+        bai: achaCol(['BAIRRO']),
+        cid: achaCol(['CIDADE','MUNIC']),
+        uf:  achaCol(['UF','ESTADO']),
+        cep: achaCol(['CEP']),
+        cnpj:achaCol(['CNPJ']),
+        tel: achaCol(['TELEF','FONE'])
+      };
+      if(idx.cod<0){ throw new Error('Coluna CODCLIEND não encontrada no cabeçalho.'); }
+      return;
+    }
+    var cod = (p[idx.cod]||'').trim();
+    if(!cod || lote['x'+cod] !== undefined) return;
+    function pega(i){ return i>=0 && p[i] ? String(p[i]).trim() : ''; }
+    var endereco = pega(idx.end);
+    var num = pega(idx.num); if(num) endereco += ', '+num;
+    var bai = pega(idx.bai); if(bai) endereco += ' - '+bai;
+    var fant = pega(idx.fan), raz = pega(idx.raz);
+    lote[chaveSegura(cod)] = {
+      n: fant || raz, r: raz, e: endereco,
+      c: pega(idx.cid), u: pega(idx.uf).toUpperCase(),
+      p: pega(idx.cep), j: pega(idx.cnpj), t: pega(idx.tel)
+    };
+    tamLote++; totalLidos++;
+  }
+  function gravaLote(){
+    if(!tamLote) return Promise.resolve();
+    var envio = lote; var qtd = tamLote;
+    lote = {}; tamLote = 0;
+    return RAIZ.child('matriz').update(envio).then(function(){ totalGravados += qtd; });
+  }
+  function passo(){
+    if(pos >= file.size){
+      if(resto) processaLinha(resto);
+      gravaLote().then(function(){
+        return RAIZ.child('matrizMeta').set({ qtd: totalGravados, quando: new Date().toLocaleString('pt-BR') });
+      }).then(function(){
+        barra.style.width = '100%';
+        txt.textContent = 'Concluído! '+totalGravados.toLocaleString('pt-BR')+' clientes gravados na matriz.';
+        mostraMsg('Matriz atualizada com '+totalGravados.toLocaleString('pt-BR')+' clientes.', 'ok');
+      }).catch(function(e){ txt.textContent = 'Erro ao gravar: '+e.message; });
+      return;
+    }
+    var fatia = file.slice(pos, pos + TAM_PEDACO);
+    fatia.arrayBuffer().then(function(buf){
+      pos += TAM_PEDACO;
+      var texto = resto + decoder.decode(buf, {stream:true});
+      var linhas = texto.split(/\r?\n/);
+      resto = linhas.pop();
+      try{
+        for(var i=0;i<linhas.length;i++) processaLinha(linhas[i]);
+      }catch(err){ txt.textContent = 'Erro: '+err.message; return; }
+      var pct = Math.min(99, Math.round(pos/file.size*100));
+      barra.style.width = pct+'%';
+      txt.textContent = pct+'% · '+totalLidos.toLocaleString('pt-BR')+' clientes lidos · '+totalGravados.toLocaleString('pt-BR')+' gravados';
+      if(tamLote >= LOTE){
+        gravaLote().then(function(){ setTimeout(passo, 0); })
+          .catch(function(e){ txt.textContent = 'Erro ao gravar no banco: '+e.message; });
+      } else {
+        setTimeout(passo, 0);
+      }
+    });
+  }
+  passo();
+}
+
+/* ============ SUBIR TET (busca na matriz) ============ */
 function toggleSubir(){
   var f = document.getElementById('formTet');
   f.style.display = f.style.display==='none' || !f.style.display ? 'block' : 'none';
 }
 function cancelarSubir(){
-  pendUpload = null;
+  tetPend = null;
   document.getElementById('preview').style.display='none';
+  document.getElementById('progTet').style.display='none';
   document.getElementById('xlsTet').value='';
   document.getElementById('formTet').style.display='none';
-  document.getElementById('dropZone').textContent = 'Clique para selecionar a planilha enviada pelo GT';
+  document.getElementById('dropZone').textContent = 'Clique para selecionar a planilha com os códigos dos clientes';
 }
-function lerPlanilha(ev){
+
+function extrairCodigos(rows){
+  /* 1) tenta achar coluna pelo cabeçalho nas primeiras 25 linhas */
+  var melhorLinha = -1, melhorCol = -1;
+  for(var r=0; r<Math.min(25, rows.length); r++){
+    for(var c=0; c<rows[r].length; c++){
+      var h = norm(rows[r][c]).replace(/\s/g,'');
+      if(h.indexOf('CODCLI')>=0 || h==='CODIGO' || h==='COD' || h==='CODCLIEND' || h.indexOf('CODIGOCLIENTE')>=0 || h.indexOf('CODCLIENTE')>=0){
+        melhorLinha = r; melhorCol = c; break;
+      }
+    }
+    if(melhorCol>=0) break;
+  }
+  function limpa(v){
+    if(v===null || v===undefined) return '';
+    if(typeof v === 'number') return String(Math.round(v));
+    var s = String(v).trim().replace(/\.0$/,'');
+    return s;
+  }
+  var codigos = [];
+  if(melhorCol>=0){
+    for(var i=melhorLinha+1;i<rows.length;i++){
+      var v = limpa(rows[i][melhorCol]);
+      if(/^\d{3,10}$/.test(v)) codigos.push(v);
+    }
+  } else {
+    /* 2) sem cabeçalho: acha a coluna com mais valores que parecem código (3-10 dígitos) */
+    var pontos = {};
+    var maxCols = 0;
+    rows.forEach(function(r){ if(r.length>maxCols) maxCols=r.length; });
+    for(var c2=0;c2<maxCols;c2++){
+      var conta = 0;
+      for(var r2=0;r2<rows.length;r2++){
+        if(/^\d{3,10}$/.test(limpa(rows[r2] ? rows[r2][c2] : ''))) conta++;
+      }
+      pontos[c2] = conta;
+    }
+    var melhor = -1, melhorQtd = 0;
+    Object.keys(pontos).forEach(function(c3){
+      if(pontos[c3] > melhorQtd){ melhorQtd = pontos[c3]; melhor = parseInt(c3); }
+    });
+    if(melhor>=0 && melhorQtd>=1){
+      for(var i2=0;i2<rows.length;i2++){
+        var v2 = limpa(rows[i2][melhor]);
+        if(/^\d{3,10}$/.test(v2)) codigos.push(v2);
+      }
+    }
+  }
+  /* dedup */
+  var vistos = {}, unicos = [];
+  codigos.forEach(function(x){ if(!vistos[x]){ vistos[x]=1; unicos.push(x); } });
+  return unicos;
+}
+
+function lerPlanilhaTet(ev){
   var file = ev.target.files[0];
   if(!file) return;
   document.getElementById('dropZone').textContent = '📄 ' + file.name;
@@ -881,76 +1073,128 @@ function lerPlanilha(ev){
   rd.onload = function(e){
     try{
       var wb = XLSX.read(e.target.result, {type:'array'});
-      var ws = wb.Sheets[wb.SheetNames[0]];
-      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      /* escolhe a aba com mais linhas */
+      var melhorAba = wb.SheetNames[0], melhorQtd = -1;
+      wb.SheetNames.forEach(function(nm){
+        var rws = XLSX.utils.sheet_to_json(wb.Sheets[nm], {header:1, defval:''});
+        var qt = rws.filter(function(r){return r.some(function(x){return String(x).trim()!=='';})}).length;
+        if(qt > melhorQtd){ melhorQtd = qt; melhorAba = nm; }
+      });
+      var rows = XLSX.utils.sheet_to_json(wb.Sheets[melhorAba], {header:1, defval:''});
       rows = rows.filter(function(r){ return r.some(function(x){return String(x).trim()!=='';}); });
-      if(rows.length < 2){ mostraMsg('A planilha está vazia ou só tem cabeçalho.', 'erro'); return; }
-      var hd = rows[0].map(function(h){return norm(h).trim();});
-      function col(names){
-        for(var i=0;i<hd.length;i++){ for(var j=0;j<names.length;j++){ if(hd[i].indexOf(names[j])>=0) return i; } }
-        return -1;
-      }
-      var iCod = col(['COD']);
-      var iNome = col(['RAZAO','FANTASIA','NOME','CLIENTE']);
-      var iEnd = col(['ENDER','LOGRAD','RUA','AV.']);
-      var iCid = col(['CIDADE','MUNIC']);
-      if(iCod<0 && iNome<0){
-        mostraMsg('Não encontrei colunas de código nem de razão social. Cabeçalho lido: '+rows[0].join(' | '), 'erro');
+      var codigos = extrairCodigos(rows);
+      if(!codigos.length){
+        mostraMsg('Não encontrei códigos de cliente na planilha (aba "'+melhorAba+'"). Confira se existe uma coluna com CODCLIENTE.', 'erro');
         return;
       }
-      var cli = [];
-      for(var i=1;i<rows.length;i++){
-        var r = rows[i];
-        var nome = iNome>=0 ? String(r[iNome]).trim() : '';
-        var cod = iCod>=0 ? String(r[iCod]).trim() : '';
-        if(!nome && !cod) continue;
-        cli.push({
-          cod: cod,
-          nome: nome || 'Cliente '+cod,
-          end: iEnd>=0 ? String(r[iEnd]).trim() : '',
-          cid: iCid>=0 ? String(r[iCid]).trim() : ''
-        });
-      }
-      pendUpload = cli;
-      var mapeadas = ['Código: '+(iCod>=0?rows[0][iCod]:'—'), 'Razão: '+(iNome>=0?rows[0][iNome]:'—'),
-                      'Endereço: '+(iEnd>=0?rows[0][iEnd]:'—'), 'Cidade: '+(iCid>=0?rows[0][iCid]:'—')];
-      var pi = document.getElementById('prevInfo');
-      pi.textContent = cli.length+' clientes lidos da planilha · Colunas filtradas → '+mapeadas.join(' · ');
-      pi.style.background='var(--azul-bg)'; pi.style.color='var(--azul)';
-      var prev = cli.slice(0,8).map(function(c){
-        return '<tr><td style="color:var(--txt2)">'+c.cod+'</td><td>'+c.nome+'</td><td style="color:var(--txt2)">'+c.end+'</td><td style="color:var(--txt2)">'+c.cid+'</td></tr>';
-      }).join('');
-      document.getElementById('prevTable').innerHTML =
-        '<table><tr><th>Código</th><th>Cliente</th><th>Endereço</th><th>Cidade</th></tr>'+prev
-        +(cli.length>8?'<tr><td colspan="4" style="color:var(--txt3)">… e mais '+(cli.length-8)+' clientes</td></tr>':'')+'</table>';
-      document.getElementById('preview').style.display='block';
+      buscarNaMatriz(codigos, melhorAba);
     }catch(err){
       mostraMsg('Erro ao ler a planilha: '+err.message, 'erro');
     }
   };
   rd.readAsArrayBuffer(file);
 }
+
+function buscarNaMatriz(codigos, aba){
+  var prog = document.getElementById('progTet');
+  var barra = document.getElementById('progTetBar');
+  var txt = document.getElementById('progTetTxt');
+  prog.style.display = 'block';
+  document.getElementById('preview').style.display = 'none';
+  barra.style.width = '0%';
+  txt.textContent = 'Buscando '+codigos.length+' códigos na matriz…';
+
+  var achados = [], faltando = [];
+  var i = 0, PARALELO = 30;
+
+  function buscaGrupo(){
+    if(i >= codigos.length){ concluir(); return; }
+    var grupo = codigos.slice(i, i+PARALELO);
+    i += PARALELO;
+    Promise.all(grupo.map(function(cod){
+      return RAIZ.child('matriz/'+chaveSegura(cod)).once('value').then(function(snap){
+        var m = snap.val();
+        if(m){ achados.push({cod:cod, m:m}); } else { faltando.push(cod); }
+      });
+    })).then(function(){
+      var pct = Math.min(99, Math.round(i/codigos.length*100));
+      barra.style.width = pct+'%';
+      txt.textContent = 'Buscando na matriz… '+Math.min(i,codigos.length)+' de '+codigos.length;
+      setTimeout(buscaGrupo, 0);
+    }).catch(function(e){
+      txt.textContent = 'Erro na busca: '+e.message;
+    });
+  }
+
+  function concluir(){
+    barra.style.width = '100%';
+    prog.style.display = 'none';
+    if(!achados.length){
+      mostraMsg('Nenhum dos '+codigos.length+' códigos foi encontrado na matriz. A matriz está atualizada? (botão Atualizar matriz)', 'erro');
+      return;
+    }
+    tetPend = achados;
+    /* UF automática pela maioria */
+    var contaUf = {};
+    achados.forEach(function(a){ var u=a.m.u||''; contaUf[u]=(contaUf[u]||0)+1; });
+    var ufMaioria = Object.keys(contaUf).sort(function(a,b){return contaUf[b]-contaUf[a]})[0];
+    if(ufMaioria && UFS.indexOf(ufMaioria)>=0) document.getElementById('tUf').value = ufMaioria;
+
+    var pi = document.getElementById('prevInfo');
+    pi.textContent = achados.length+' de '+codigos.length+' clientes encontrados na matriz (aba "'+aba+'")'+(ufMaioria?' · UF sugerida: '+ufMaioria:'');
+    pi.style.background='var(--azul-bg)'; pi.style.color='var(--azul)'; pi.style.display='block';
+
+    var pf = document.getElementById('prevFalta');
+    if(faltando.length){
+      pf.textContent = faltando.length+' código(s) não encontrado(s) na matriz e ficarão de fora: '+faltando.slice(0,20).join(', ')+(faltando.length>20?'…':'');
+      pf.style.background='var(--amar-bg)'; pf.style.color='var(--amar)'; pf.style.display='block';
+    } else {
+      pf.style.display='none';
+    }
+
+    var prev = achados.slice(0,10).map(function(a){
+      return '<tr><td style="color:var(--txt2)">'+a.cod+'</td><td>'+a.m.n+'</td><td style="color:var(--txt2)">'+a.m.e+'</td><td style="color:var(--txt2)">'+a.m.c+' / '+a.m.u+'</td></tr>';
+    }).join('');
+    document.getElementById('prevTable').innerHTML =
+      '<table><tr><th>Código</th><th>Cliente</th><th>Endereço</th><th>Cidade/UF</th></tr>'+prev
+      +(achados.length>10?'<tr><td colspan="4" style="color:var(--txt3)">… e mais '+(achados.length-10)+' clientes</td></tr>':'')+'</table>';
+    document.getElementById('preview').style.display='block';
+  }
+
+  buscaGrupo();
+}
+
 function criarTet(){
   var nome = norm(document.getElementById('tNome').value).trim();
   var uf = document.getElementById('tUf').value;
   if(!nome){ alert('Digite o nome do TET.'); return; }
-  if(!pendUpload || !pendUpload.length){ alert('Selecione a planilha do GT primeiro.'); return; }
+  if(!tetPend || !tetPend.length){ alert('Selecione a planilha com os códigos primeiro.'); return; }
   var existentes = Object.keys(CLIENTES).filter(function(k){return CLIENTES[k].tet===nome;});
   if(existentes.length && !confirm('O TET "'+nome+'" já existe com '+existentes.length+' clientes. Substituir pela nova planilha?')) return;
   var updates = {};
   existentes.forEach(function(k){ updates[k] = null; });
-  var qtd = pendUpload.length;
-  pendUpload.forEach(function(c, i){
-    var k = chaveSegura(nome)+'__'+ (c.cod ? chaveSegura(c.cod) : 'i'+i) + '_' + i;
-    updates[k] = {cod:c.cod, nome:c.nome, end:c.end, cid:c.cid, uf:uf, tet:nome, st:'pen'};
+  var qtd = tetPend.length;
+  tetPend.forEach(function(a, i){
+    var k = chaveSegura(nome)+'__'+chaveSegura(a.cod);
+    updates[k] = {
+      cod: a.cod, nome: a.m.n || a.m.r || ('Cliente '+a.cod),
+      razao: a.m.r || '', end: a.m.e || '', cid: a.m.c || '',
+      uf: (a.m.u && UFS.indexOf(a.m.u)>=0) ? a.m.u : uf,
+      cep: a.m.p || '', cnpj: a.m.j || '', tel: a.m.t || '',
+      tet: nome, st: 'pen'
+    };
   });
+  var btn = document.getElementById('btnCriarTet');
+  btn.disabled = true;
   RAIZ.child('clientes').update(updates).then(function(){
-    mostraMsg('TET "'+nome+'" criado em '+uf+' com '+qtd+' clientes. Agora atribua a um colaborador.', 'ok');
+    btn.disabled = false;
+    mostraMsg('TET "'+nome+'" criado com '+qtd+' clientes. Agora atribua a um colaborador.', 'ok');
     document.getElementById('tNome').value='';
     cancelarSubir();
     document.getElementById('selUf').value = uf;
-  }).catch(function(e){ mostraMsg('Erro ao salvar: '+e.message, 'erro'); });
+  }).catch(function(e){ btn.disabled = false; mostraMsg('Erro ao salvar: '+e.message, 'erro'); });
 }
+
 function mostraMsg(txt, tipo){
   var m = document.getElementById('upMsg');
   m.textContent = txt;
@@ -959,7 +1203,7 @@ function mostraMsg(txt, tipo){
   m.style.display = 'block';
 }
 
-/* ---- cadastro manual de colaborador ---- */
+/* ---- cadastro manual ---- */
 function toggleForm(){
   var f = document.getElementById('formColab');
   f.style.display = f.style.display==='none' || !f.style.display ? 'block' : 'none';
@@ -1000,11 +1244,11 @@ function saveColab(){
 
 /* ---- export ---- */
 function exportCSV(){
-  var out = 'Codigo;Cliente;Endereco;Cidade;UF;TET;Status;Colaborador;Porte;DiasDeCompra;FormatoCompras;AcessoMartins;ConheceRCA;FreqVisitaRCA;CompradorNome;CompradorTel;ProprietarioNome;ProprietarioTel;Observacoes;Quando\n';
+  var out = 'Codigo;Cliente;RazaoSocial;Endereco;Cidade;UF;CEP;CNPJ;TelefoneMatriz;TET;Status;Colaborador;Porte;DiasDeCompra;FormatoCompras;AcessoMartins;ConheceRCA;FreqVisitaRCA;CompradorNome;CompradorTel;ProprietarioNome;ProprietarioTel;Observacoes;Quando\n';
   cliArr().forEach(function(c){
     var r = c.reg || {};
     out += [
-      c.cod, c.nome, (c.end||''), (c.cid||''), c.uf, c.tet,
+      c.cod, c.nome, (c.razao||''), (c.end||''), (c.cid||''), c.uf, (c.cep||''), (c.cnpj||''), (c.tel||''), c.tet,
       (c.st==='vis'?'Atualizado':c.st==='fec'?'Nao existe':'Pendente'),
       (c.colab||''), (r.porte||''), resumoDias(r.dias),
       (r.fmts||[]).join(', '), (r.acessos||[]).join(', '),
@@ -1023,6 +1267,5 @@ function exportCSV(){
 document.getElementById('cUf').innerHTML = UFS.map(function(u){return '<option'+(u==='SP'?' selected':'')+'>'+u+'</option>'}).join('');
 mostraTela('telaLogin');
 </script>
-  
 </body>
 </html>
