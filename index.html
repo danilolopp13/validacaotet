@@ -93,6 +93,21 @@
   .fechar{float:right; font-size:12px;}
   #telaCadastro,#telaEspera,#telaColab,#telaGestor,#drill{display:none;}
   #modalCheck{display:none; position:absolute; left:0; right:0; top:0; background:rgba(20,30,40,.45); min-height:100%; padding:20px 14px; z-index:10;}
+  #modalAtrib{display:none; position:fixed; inset:0; background:rgba(20,30,40,.45); padding:24px 14px; z-index:30; overflow-y:auto;}
+  .opt{border:1px solid var(--border); border-radius:10px; padding:10px 12px; cursor:pointer; background:var(--card); display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .opt:hover{border-color:#b9c4d0; background:#fafbfc;}
+  .opt.sel{border-color:var(--azul); background:var(--azul-bg);}
+  .opt .on{font-size:12.5px; font-weight:600;}
+  .acoes{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .acoes button{font-size:12.5px; padding:7px 11px;}
+  .graf{display:flex; align-items:flex-end; gap:3px; height:110px; border-bottom:1px solid var(--border); padding-bottom:2px;}
+  .graf .col{flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; height:100%; min-width:6px;}
+  .graf .bar{width:100%; background:var(--azul); border-radius:3px 3px 0 0; min-height:2px;}
+  .graf .col.fds .bar{background:#cdd6df;}
+  .graf .col.zero .bar{background:#eceff2;}
+  .graf-eixo{display:flex; justify-content:space-between; font-size:11px; color:var(--txt3); margin-top:5px;}
+  .alerta-card{border-left:4px solid var(--border);}
+  .alerta-card .n{font-size:26px; font-weight:600; line-height:1.1;}
   #carregando{position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:99; font-size:14px; color:var(--txt2);}
   @media (max-width:640px){ .wrap{padding:12px;} }
 </style>
@@ -286,6 +301,28 @@
   </div>
 </div>
 
+<!-- ===================== MODAL ATRIBUIÇÃO DE TET ===================== -->
+<div id="modalAtrib">
+  <div class="card" style="max-width:560px; margin:0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:start; gap:10px;">
+      <div>
+        <div class="badge b-azul" style="margin-bottom:6px;">Atribuição de TET</div>
+        <div class="nome" id="atTitulo"></div>
+        <div class="meta" id="atSub"></div>
+      </div>
+      <button onclick="fecharAtrib()" style="padding:6px 10px; font-size:12px;">✕</button>
+    </div>
+    <div style="border-top:1px solid var(--border); margin:12px 0;"></div>
+    <input type="text" id="atBusca" placeholder="🔎 Buscar..." oninput="renderAtribLista()" style="margin-bottom:10px;">
+    <div id="atLista" style="max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+    <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+      <button class="primario" onclick="salvarAtrib()">✓ Salvar atribuição</button>
+      <button class="perigo" onclick="limparAtrib()" id="atBtnLimpar">Deixar sem TET</button>
+      <button onclick="fecharAtrib()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== VISÃO GESTOR ===================== -->
 <div id="telaGestor">
 <div class="wrap">
@@ -365,8 +402,29 @@
     <div class="grid" id="listAprov"></div>
   </div>
 
+  <div class="sec" style="margin-top:4px;">
+    <h2>Acompanhamento da equipe <span class="hint">— quem está trabalhando e quem parou</span></h2>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <select id="acPer" onchange="renderAcomp()" style="width:auto;">
+        <option value="7">Últimos 7 dias</option>
+        <option value="15">Últimos 15 dias</option>
+        <option value="30" selected>Últimos 30 dias</option>
+        <option value="0">Todo o período</option>
+      </select>
+      <button onclick="exportProdutividade()">⬇ CSV de produtividade</button>
+    </div>
+  </div>
+  <div class="grid" id="acAlertas"></div>
+  <div class="card" style="margin-bottom:14px;">
+    <div class="meta" style="margin-bottom:10px;">Validações registradas por dia <span id="acGrafPer"></span></div>
+    <div id="acGrafico"></div>
+  </div>
+  <div class="card" style="margin-bottom:24px; overflow-x:auto;">
+    <div id="acTabela"></div>
+  </div>
+
   <div class="sec">
-    <h2>Colaboradores</h2>
+    <h2>Colaboradores <span class="hint">— use "Trocar TET" para remanejar sem criar acesso novo</span></h2>
     <button onclick="toggleForm()">+ Novo colaborador</button>
   </div>
 
@@ -375,10 +433,10 @@
       <div><label>Nome</label><input type="text" id="fNome" placeholder="Nome do colaborador" oninput="sugLogin()"></div>
       <div><label>Login</label><input type="text" id="fLogin"></div>
       <div><label>Senha</label><input type="text" id="fSenha"></div>
-      <div><label>UF</label><select id="fUf" onchange="renderTetChecks()"></select></div>
+      <div><label>UF</label><select id="fUf"></select></div>
     </div>
-    <label>TETs atribuídos — o colaborador só verá os clientes destes TETs</label>
-    <div id="fTets" style="display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 14px;"></div>
+    <label>TET atribuído — o colaborador só verá os clientes deste TET (pode trocar depois)</label>
+    <div style="margin:6px 0 14px;"><select id="fTet"></select></div>
     <div style="display:flex; gap:8px;">
       <button class="primario" onclick="saveColab()">Salvar colaborador</button>
       <button onclick="toggleForm()">Cancelar</button>
@@ -427,6 +485,50 @@ function resumoDias(dias){
     .map(function(d){return d+' ('+dias[d]+')';}).join(', ');
 }
 
+/* ============ ATRIBUIÇÃO DE TET ============ */
+/* regra: 1 colaborador = 1 TET, e 1 TET = 1 colaborador */
+function tetDoColab(login){
+  var c = COLABS[login];
+  return (c && c.tets && c.tets.length) ? c.tets[0] : '';
+}
+function donosDoTet(t, exceto){
+  return Object.keys(COLABS).filter(function(l){
+    return l !== exceto && (COLABS[l].tets||[]).indexOf(t) >= 0;
+  });
+}
+function qtdClientesTet(t){
+  return cliArr().filter(function(c){return c.tet===t;}).length;
+}
+/* grava a atribuição liberando o TET de quem estava com ele e o TET antigo do colaborador */
+function aplicaTet(login, tet, extra){
+  var upd = extra || {};
+  if(tet){
+    donosDoTet(tet, login).forEach(function(l){ upd[l+'/tets'] = null; });
+    var uf = tetsAll()[tet];
+    if(uf) upd[login+'/uf'] = uf;
+  }
+  upd[login+'/tets'] = tet ? [tet] : null;
+  return RAIZ.child('colaboradores').update(upd);
+}
+/* monta a pergunta de confirmação explicando o que muda */
+function confirmaTroca(login, tet){
+  var c = COLABS[login];
+  var atual = tetDoColab(login);
+  if(atual === tet) return false;
+  var msg = tet
+    ? 'Atribuir o TET "'+tet+'" ('+qtdClientesTet(tet)+' clientes) para '+c.nome+'?'
+    : 'Deixar '+c.nome+' sem nenhum TET?';
+  if(atual) msg += '\n\n• Ele deixa de ver o TET "'+atual+'" (os dados já coletados continuam salvos no TET).';
+  if(tet){
+    var donos = donosDoTet(tet, login);
+    if(donos.length){
+      msg += '\n\n• Atenção: o TET "'+tet+'" está hoje com '+donos.map(function(l){return COLABS[l].nome;}).join(', ')
+           + ' e será transferido — essa pessoa fica sem TET.';
+    }
+  }
+  return confirm(msg);
+}
+
 /* ============ LISTENERS ============ */
 RAIZ.child('colaboradores').on('value', function(snap){
   COLABS = snap.val() || {};
@@ -449,8 +551,23 @@ RAIZ.child('matrizMeta').on('value', function(snap){
 
 function aoAtualizar(){
   if(prontoColab && prontoCli) document.getElementById('carregando').style.display = 'none';
-  if(papel === 'gestor'){ fillSelects(); kpis(); renderAprov(); renderColabs(); renderTerr(); }
-  if(papel === 'colab' && user && COLABS[user]) renderLista();
+  if(papel === 'gestor'){
+    fillSelects(); kpis(); renderAprov(); renderColabs(); renderTerr(); renderAcomp();
+    if(document.getElementById('modalAtrib').style.display === 'block') renderAtribLista();
+  }
+  if(papel === 'colab' && user){
+    var c = COLABS[user];
+    if(!c){ sair(); return; }
+    if(c.status !== 'ok' || !c.tets.length){
+      document.getElementById('eNome').textContent = c.nome + ' · ' + c.uf;
+      mostraTela('telaEspera');
+    } else {
+      document.getElementById('hNome').textContent = c.nome;
+      document.getElementById('hTets').textContent = c.tets.join(' · ');
+      if(document.getElementById('telaColab').style.display !== 'block') mostraTela('telaColab');
+      renderLista();
+    }
+  }
 }
 
 /* ============ NAVEGAÇÃO ============ */
@@ -483,12 +600,16 @@ function entrar(){
   if(u === GESTOR_LOGIN && p === GESTOR_SENHA){
     user = u; papel = 'gestor';
     mostraTela('telaGestor');
-    fillSelects(); kpis(); renderAprov(); renderColabs(); renderTerr();
+    fillSelects(); kpis(); renderAprov(); renderColabs(); renderTerr(); renderAcomp();
     return;
   }
   var c = COLABS[u];
   if(c && c.senha === p){
     user = u; papel = 'colab';
+    RAIZ.child('colaboradores/'+u).update({
+      ultimoLogin: new Date().toLocaleString('pt-BR'),
+      ultimoLoginTs: Date.now()
+    });
     if(c.status !== 'ok' || !c.tets.length){
       document.getElementById('eNome').textContent = c.nome + ' · ' + c.uf;
       mostraTela('telaEspera');
@@ -718,10 +839,12 @@ function salvarAtualizacao(){
     propNome: document.getElementById('mPropNome').value.trim(),
     propTel: document.getElementById('mPropTel').value.trim(),
     obs: document.getElementById('mObs').value.trim(),
-    quando: new Date().toLocaleString('pt-BR')
+    quando: new Date().toLocaleString('pt-BR'),
+    ts: Date.now()
   };
   RAIZ.child('clientes/'+cliChave).update({
-    st: 'vis', reg: reg, colab: (COLABS[user] ? COLABS[user].nome : user)
+    st: 'vis', reg: reg,
+    colab: (COLABS[user] ? COLABS[user].nome : user), colabLogin: user
   }).then(fecharModal).catch(function(e){ alert('Erro ao salvar: '+e.message); });
 }
 function lojaNaoExiste(){
@@ -730,8 +853,8 @@ function lojaNaoExiste(){
   if(!confirm('Confirmar que a loja "'+c.nome+'" não existe no endereço?')) return;
   RAIZ.child('clientes/'+cliChave).update({
     st: 'fec',
-    reg: { quando: new Date().toLocaleString('pt-BR') },
-    colab: (COLABS[user] ? COLABS[user].nome : user)
+    reg: { quando: new Date().toLocaleString('pt-BR'), ts: Date.now() },
+    colab: (COLABS[user] ? COLABS[user].nome : user), colabLogin: user
   }).then(fecharModal).catch(function(e){ alert('Erro ao salvar: '+e.message); });
 }
 
@@ -761,32 +884,46 @@ function renderAprov(){
   if(!pends.length){ sec.style.display='none'; return; }
   sec.style.display = 'block';
   document.getElementById('nAprov').textContent = pends.length;
-  var map = tetsAll();
   document.getElementById('listAprov').innerHTML = pends.map(function(l, i){
     var a = COLABS[l];
     var ini = a.nome.split(' ').map(function(p){return p[0]}).slice(0,2).join('').toUpperCase();
-    var ts = Object.keys(map).filter(function(t){return map[t]===a.uf}).sort();
-    var chks = ts.length
-      ? ts.map(function(t){return '<label class="chk" style="font-size:12px; padding:5px 9px;"><input type="checkbox" class="apChk'+i+'" value="'+t+'"> '+t+'</label>'}).join('')
-      : '<span class="meta">Nenhum TET em '+a.uf+' ainda — suba um TET antes de aprovar, ou aprove sem TET e atribua depois.</span>';
     return '<div class="card pend">'
       +'<div class="linha"><div class="avatar" style="background:var(--amar-bg); color:var(--amar);">'+ini+'</div>'
       +'<div><div class="nome">'+a.nome+'</div>'
       +'<div class="meta">login: '+l+' · '+a.uf+(a.solicitadoEm?' · solicitado em '+a.solicitadoEm:'')+'</div></div></div>'
-      +'<label style="margin-top:4px;">Atribuir TETs de '+a.uf+'</label>'
-      +'<div style="display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 12px;">'+chks+'</div>'
+      +'<label style="margin-top:4px;">TET a atribuir</label>'
+      +'<div style="margin:6px 0 12px;"><select id="apSel'+i+'">'+optsTets('', a.uf)+'</select></div>'
       +'<div style="display:flex; gap:8px;">'
       +'<button class="ok" onclick="aprovar(\''+l+'\','+i+')">✓ Aprovar</button>'
       +'<button class="perigo" onclick="recusar(\''+l+'\')">✕ Recusar</button>'
       +'</div></div>';
   }).join('');
 }
+/* opções de TET para os selects — todas as UFs, marcando quem já está com cada um */
+function optsTets(sel, ufPref){
+  var map = tetsAll();
+  var ts = Object.keys(map).sort(function(a,b){
+    var pa = (map[a]===ufPref?'0':'1')+map[a]+a, pb = (map[b]===ufPref?'0':'1')+map[b]+b;
+    return pa < pb ? -1 : 1;
+  });
+  var o = '<option value="">— sem TET por enquanto —</option>';
+  o += ts.map(function(t){
+    var donos = donosDoTet(t, null);
+    var obs = donos.length ? ' — com '+donos.map(function(l){return COLABS[l].nome.split(' ')[0];}).join(', ') : ' — livre';
+    return '<option value="'+t.replace(/"/g,'&quot;')+'"'+(t===sel?' selected':'')+'>'
+      + map[t]+' · '+t+' ('+qtdClientesTet(t)+' clientes)'+obs+'</option>';
+  }).join('');
+  return o;
+}
+
 function aprovar(login, i){
   var a = COLABS[login];
-  var tets = Array.prototype.slice.call(document.querySelectorAll('.apChk'+i+':checked')).map(function(c){return c.value});
-  if(!tets.length && !confirm('Aprovar "'+a.nome+'" sem nenhum TET atribuído? Ele ficará sem carteira até você atribuir.')) return;
-  RAIZ.child('colaboradores/'+login).update({status:'ok', tets:tets})
-    .then(function(){ mostraMsg('Colaborador "'+a.nome+'" aprovado'+(tets.length?' com '+tets.length+' TET(s)':'')+'.', 'ok'); })
+  var tet = document.getElementById('apSel'+i).value;
+  if(!tet && !confirm('Aprovar "'+a.nome+'" sem nenhum TET atribuído? Ele ficará sem carteira até você atribuir.')) return;
+  if(tet && !confirmaTroca(login, tet)) return;
+  aplicaTet(login, tet, {})
+    .then(function(){ return RAIZ.child('colaboradores/'+login+'/status').set('ok'); })
+    .then(function(){ mostraMsg('Colaborador "'+a.nome+'" aprovado'+(tet?' no TET "'+tet+'"':' (sem TET)')+'.', 'ok'); })
     .catch(function(e){ mostraMsg('Erro: '+e.message, 'erro'); });
 }
 function recusar(login){
@@ -814,8 +951,122 @@ function renderColabs(){
       +'<div class="meta">login: '+l+' · '+c.uf+' · '+cart.length+' clientes</div></div></div>'
       +'<div class="barra"><div style="width:'+pct+'%"></div></div>'
       +'<div class="meta">'+done+' de '+cart.length+' atualizados ('+pct+'%)</div>'
-      +'<div class="tags">'+tags+'</div></div>';
+      +'<div class="tags">'+tags+'</div>'
+      +'<div class="acoes">'
+      +'<button class="primario" onclick="abrirAtribColab(\''+l+'\')">🔁 '+(c.tets.length?'Trocar TET':'Atribuir TET')+'</button>'
+      +'<button onclick="verSenha(\''+l+'\')">🔑 Senha</button>'
+      +'</div></div>';
   }).join('') || '<div class="card meta">Nenhum colaborador aprovado ainda.</div>';
+}
+function verSenha(login){
+  var c = COLABS[login];
+  alert('Acesso de '+c.nome+':\n\nLogin: '+login+'\nSenha: '+(c.senha||'—'));
+}
+
+/* ---- modal de atribuição ---- */
+var atModo = null, atLogin = null, atTet = null, atSel = null;
+
+function abrirAtribColab(login){
+  var c = COLABS[login];
+  atModo = 'colab'; atLogin = login; atTet = null;
+  atSel = tetDoColab(login) || null;
+  document.getElementById('atTitulo').textContent = c.nome;
+  document.getElementById('atSub').textContent = 'Escolha o TET que este colaborador vai atender · hoje: '
+    + (atSel || 'sem TET');
+  document.getElementById('atBtnLimpar').textContent = 'Deixar sem TET';
+  document.getElementById('atBusca').placeholder = '🔎 Buscar TET por nome ou UF...';
+  document.getElementById('atBusca').value = '';
+  renderAtribLista();
+  document.getElementById('modalAtrib').style.display = 'block';
+}
+function abrirAtribTet(t){
+  atModo = 'tet'; atTet = t; atLogin = null;
+  var donos = donosDoTet(t, null);
+  atSel = donos.length ? donos[0] : null;
+  document.getElementById('atTitulo').textContent = t;
+  document.getElementById('atSub').textContent = qtdClientesTet(t) + ' clientes · responsável hoje: '
+    + (atSel ? COLABS[atSel].nome : 'ninguém');
+  document.getElementById('atBtnLimpar').textContent = 'Deixar TET sem responsável';
+  document.getElementById('atBusca').placeholder = '🔎 Buscar colaborador por nome ou login...';
+  document.getElementById('atBusca').value = '';
+  renderAtribLista();
+  document.getElementById('modalAtrib').style.display = 'block';
+}
+function fecharAtrib(){
+  document.getElementById('modalAtrib').style.display = 'none';
+  atModo = null; atLogin = null; atTet = null; atSel = null;
+}
+function renderAtribLista(){
+  if(!atModo) return;
+  var q = document.getElementById('atBusca').value.trim().toLowerCase();
+  var html = '';
+  if(atModo === 'colab'){
+    var map = tetsAll();
+    var ts = Object.keys(map).sort(function(a,b){
+      return (map[a]+a) < (map[b]+b) ? -1 : 1;
+    }).filter(function(t){
+      return !q || (t+' '+map[t]).toLowerCase().indexOf(q) >= 0;
+    });
+    html = ts.map(function(t){
+      var donos = donosDoTet(t, atLogin);
+      var st = donos.length
+        ? '<span class="badge b-amar">com '+donos.map(function(l){return COLABS[l].nome.split(' ')[0];}).join(', ')+'</span>'
+        : '<span class="badge b-verde">livre</span>';
+      return '<div class="opt'+(atSel===t?' sel':'')+'" onclick="selAtrib(\''+t.replace(/'/g,"\\'")+'\')">'
+        +'<div><div class="nome" style="font-size:13.5px;">'+t+'</div>'
+        +'<div class="meta">'+map[t]+' · '+qtdClientesTet(t)+' clientes</div></div>'
+        +st+'</div>';
+    }).join('');
+    if(!ts.length) html = '<div class="meta">Nenhum TET encontrado. Use "Subir TET" para criar.</div>';
+  } else {
+    var logins = Object.keys(COLABS).filter(function(l){
+      return COLABS[l].status === 'ok'
+        && (!q || (COLABS[l].nome+' '+l+' '+COLABS[l].uf).toLowerCase().indexOf(q) >= 0);
+    }).sort(function(a,b){ return COLABS[a].nome < COLABS[b].nome ? -1 : 1; });
+    html = logins.map(function(l){
+      var c = COLABS[l];
+      var seu = tetDoColab(l);
+      var st = seu === atTet
+        ? '<span class="badge b-verde">responsável atual</span>'
+        : seu ? '<span class="badge b-amar">está no '+seu+'</span>'
+              : '<span class="badge b-cinza">sem TET</span>';
+      return '<div class="opt'+(atSel===l?' sel':'')+'" onclick="selAtrib(\''+l+'\')">'
+        +'<div><div class="nome" style="font-size:13.5px;">'+c.nome+'</div>'
+        +'<div class="meta">login: '+l+' · '+c.uf+'</div></div>'
+        +st+'</div>';
+    }).join('');
+    if(!logins.length) html = '<div class="meta">Nenhum colaborador aprovado ainda.</div>';
+  }
+  document.getElementById('atLista').innerHTML = html;
+}
+function selAtrib(v){
+  atSel = (atSel === v) ? null : v;
+  renderAtribLista();
+}
+function salvarAtrib(){
+  if(!atSel){ alert(atModo==='colab' ? 'Escolha um TET na lista.' : 'Escolha um colaborador na lista.'); return; }
+  var login = atModo === 'colab' ? atLogin : atSel;
+  var tet   = atModo === 'colab' ? atSel   : atTet;
+  if(tetDoColab(login) === tet){ fecharAtrib(); return; }
+  if(!confirmaTroca(login, tet)) return;
+  var nome = COLABS[login].nome;
+  aplicaTet(login, tet).then(function(){
+    fecharAtrib();
+    mostraMsg('TET "'+tet+'" atribuído a '+nome+'.', 'ok');
+  }).catch(function(e){ alert('Erro ao salvar: '+e.message); });
+}
+function limparAtrib(){
+  var login = atModo === 'colab' ? atLogin : (donosDoTet(atTet, null)[0] || null);
+  if(!login || !tetDoColab(login)){
+    alert(atModo === 'colab' ? 'Este colaborador já está sem TET.' : 'Este TET já está sem responsável.');
+    return;
+  }
+  if(!confirmaTroca(login, '')) return;
+  var nome = COLABS[login].nome;
+  aplicaTet(login, '').then(function(){
+    fecharAtrib();
+    mostraMsg(nome+' ficou sem TET atribuído.', 'ok');
+  }).catch(function(e){ alert('Erro ao salvar: '+e.message); });
 }
 function renderTerr(){
   var uf = document.getElementById('selUf').value || 'SP';
@@ -830,10 +1081,14 @@ function renderTerr(){
       ? '<span class="badge b-verde">'+resp.join(', ')+'</span>'
       : '<span class="badge b-amar">Sem colaborador</span>';
     var done = arr.filter(function(x){return x.st!=='pen'}).length;
-    return '<div class="card clic" onclick="openDrill(\''+t.replace(/'/g,"\\'")+'\')">'
+    var tEsc = t.replace(/'/g,"\\'");
+    return '<div class="card clic" onclick="openDrill(\''+tEsc+'\')">'
       +'<div class="nome" style="margin-bottom:2px;">'+t+'</div>'
       +'<div class="meta" style="margin-bottom:9px;">'+uf+' · '+arr.length+' clientes · '+done+' atualizados</div>'
-      +badge+'</div>';
+      +badge
+      +'<div class="acoes"><button class="primario" onclick="event.stopPropagation(); abrirAtribTet(\''+tEsc+'\')">👤 '
+      +(resp.length?'Trocar responsável':'Atribuir a…')+'</button></div>'
+      +'</div>';
   }).join('');
   document.getElementById('listTerr').innerHTML = h || '<div class="meta">Nenhum TET nesta UF ainda. Use o botão "Subir TET".</div>';
 }
@@ -1207,7 +1462,7 @@ function mostraMsg(txt, tipo){
 function toggleForm(){
   var f = document.getElementById('formColab');
   f.style.display = f.style.display==='none' || !f.style.display ? 'block' : 'none';
-  if(f.style.display==='block') renderTetChecks();
+  if(f.style.display==='block') renderTetSelect();
 }
 function sugLogin(){
   var n = document.getElementById('fNome').value.trim().split(' ')[0].toLowerCase()
@@ -1215,13 +1470,8 @@ function sugLogin(){
   document.getElementById('fLogin').value = n;
   document.getElementById('fSenha').value = n ? n+'10' : '';
 }
-function renderTetChecks(){
-  var uf = document.getElementById('fUf').value;
-  var map = tetsAll();
-  var ts = Object.keys(map).filter(function(t){return map[t]===uf}).sort();
-  document.getElementById('fTets').innerHTML = ts.length
-    ? ts.map(function(t){return '<label class="chk"><input type="checkbox" class="tetChk" value="'+t+'"> '+t+'</label>'}).join('')
-    : '<span class="meta">Nenhum TET nesta UF. Suba um TET primeiro.</span>';
+function renderTetSelect(){
+  document.getElementById('fTet').innerHTML = optsTets('', document.getElementById('fUf').value);
 }
 function saveColab(){
   var nome = document.getElementById('fNome').value.trim();
@@ -1230,16 +1480,200 @@ function saveColab(){
   if(!nome){ alert('Informe o nome do colaborador.'); return; }
   if(!login){ alert('Informe o login.'); return; }
   if(login === GESTOR_LOGIN || COLABS[login]){ alert('Este login já está em uso.'); return; }
-  var tets = Array.prototype.slice.call(document.querySelectorAll('.tetChk:checked')).map(function(c){return c.value});
-  RAIZ.child('colaboradores/'+login).set({
-    nome: nome, senha: senha, uf: document.getElementById('fUf').value,
-    status: 'ok', tets: tets,
+  var tet = document.getElementById('fTet').value;
+  var uf = (tet && tetsAll()[tet]) || document.getElementById('fUf').value;
+  var upd = {};
+  if(tet){
+    var donos = donosDoTet(tet, login);
+    if(donos.length && !confirm('O TET "'+tet+'" está com '+donos.map(function(l){return COLABS[l].nome;}).join(', ')
+      +'. Transferir para '+nome+'? Essa pessoa fica sem TET.')) return;
+    donos.forEach(function(l){ upd[l+'/tets'] = null; });
+  }
+  upd[login] = {
+    nome: nome, senha: senha, uf: uf,
+    status: 'ok', tets: tet ? [tet] : [],
     solicitadoEm: new Date().toLocaleString('pt-BR')
-  }).then(function(){
+  };
+  RAIZ.child('colaboradores').update(upd).then(function(){
     document.getElementById('fNome').value=''; document.getElementById('fLogin').value=''; document.getElementById('fSenha').value='';
     toggleForm();
     mostraMsg('Colaborador "'+nome+'" criado (login: '+login+' / senha: '+senha+').', 'ok');
   }).catch(function(e){ alert('Erro: '+e.message); });
+}
+
+/* ============ ACOMPANHAMENTO DA EQUIPE ============ */
+var DIAS_PARADO = 2; /* dias úteis sem registro para marcar como parado */
+
+function pad2(n){ return n<10 ? '0'+n : ''+n; }
+function soData(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function chaveDia(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function ehUtil(d){ var w = d.getDay(); return w!==0 && w!==6; }
+
+/* lê a data de um registro: usa o carimbo numérico e, se não houver, interpreta o texto */
+function parseQuando(s){
+  if(!s) return null;
+  var m = String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5], +(m[6]||0));
+  var m2 = String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m2) return new Date(+m2[3], +m2[2]-1, +m2[1]);
+  return null;
+}
+function dataDoRegistro(c){
+  if(!c.reg) return null;
+  if(c.reg.ts) return new Date(c.reg.ts);
+  return parseQuando(c.reg.quando);
+}
+/* dias úteis completos sem nenhum registro (não conta hoje nem o próprio dia da última) */
+function diasUteisParado(ultima){
+  if(!ultima) return null;
+  var d = soData(ultima), hoje = soData(new Date()), n = 0;
+  d.setDate(d.getDate()+1);
+  while(d < hoje){ if(ehUtil(d)) n++; d.setDate(d.getDate()+1); }
+  return n;
+}
+/* todos os registros feitos, com autor resolvido por login e, se antigo, por nome */
+function registros(){
+  var porNome = {};
+  Object.keys(COLABS).forEach(function(l){ porNome[COLABS[l].nome] = l; });
+  return cliArr().filter(function(c){ return c.st!=='pen' && c.reg; }).map(function(c){
+    return {
+      login: c.colabLogin || porNome[c.colab] || null,
+      nome: c.colab || '—', tet: c.tet, st: c.st,
+      data: dataDoRegistro(c)
+    };
+  });
+}
+function corteDoPeriodo(){
+  var n = parseInt(document.getElementById('acPer').value, 10);
+  if(!n) return null;
+  var d = soData(new Date());
+  d.setDate(d.getDate() - (n-1));
+  return d;
+}
+
+function renderAcomp(){
+  var regs = registros();
+  var corte = corteDoPeriodo();
+  var logins = Object.keys(COLABS).filter(function(l){return COLABS[l].status==='ok';});
+  var arr = cliArr();
+
+  /* --- linha por colaborador --- */
+  var linhas = logins.map(function(l){
+    var c = COLABS[l];
+    var tet = tetDoColab(l);
+    var cart = arr.filter(function(x){ return tet && x.tet===tet; });
+    var done = cart.filter(function(x){ return x.st!=='pen'; }).length;
+    var meus = regs.filter(function(r){ return r.login===l; });
+    var noPer = meus.filter(function(r){ return r.data && (!corte || r.data >= corte); }).length;
+    var datas = meus.map(function(r){return r.data;}).filter(Boolean).sort(function(a,b){return b-a;});
+    var ultima = datas[0] || null;
+    var parado = diasUteisParado(ultima);
+    var pct = cart.length ? Math.round(done/cart.length*100) : 0;
+
+    var status, cor;
+    if(!tet){ status='Sem TET atribuído'; cor='b-cinza'; }
+    else if(!meus.length){ status='Nunca validou'; cor='b-verm'; }
+    else if(pct>=100){ status='TET concluído'; cor='b-azul'; }
+    else if(parado>=DIAS_PARADO){ status='Parado há '+parado+' dias úteis'; cor='b-verm'; }
+    else if(parado===1){ status='1 dia útil sem registro'; cor='b-amar'; }
+    else { status='Ativo'; cor='b-verde'; }
+
+    return {
+      login:l, nome:c.nome, uf:c.uf, tet:tet, cart:cart.length, done:done, pct:pct,
+      total:meus.length, noPer:noPer, ultima:ultima, parado:parado,
+      login_ts: c.ultimoLoginTs || null, loginTxt: c.ultimoLogin || '',
+      status:status, cor:cor
+    };
+  }).sort(function(a,b){ return b.noPer - a.noPer || b.total - a.total; });
+
+  /* --- alertas --- */
+  function cardAlerta(titulo, lista, corBorda, corTxt, obs){
+    var nomes = lista.map(function(x){return x.nome.split(' ')[0];});
+    return '<div class="card alerta-card" style="border-left-color:'+corBorda+';">'
+      +'<div class="lbl meta">'+titulo+'</div>'
+      +'<div class="n" style="color:'+corTxt+';">'+lista.length+'</div>'
+      +'<div class="meta" style="margin-top:6px;">'
+      + (nomes.length ? nomes.slice(0,6).join(', ')+(nomes.length>6?' +'+(nomes.length-6):'') : (obs||'nenhum'))
+      +'</div></div>';
+  }
+  document.getElementById('acAlertas').innerHTML =
+      cardAlerta('Sem TET atribuído', linhas.filter(function(x){return !x.tet;}), 'var(--txt3)', 'var(--txt2)', 'todos com TET')
+    + cardAlerta('Com TET e nunca validou', linhas.filter(function(x){return x.tet && !x.total;}), 'var(--verm)', 'var(--verm)', 'ninguém')
+    + cardAlerta('Parados há '+DIAS_PARADO+'+ dias úteis', linhas.filter(function(x){return x.tet && x.total && x.parado>=DIAS_PARADO && x.pct<100;}), 'var(--amar)', 'var(--amar)', 'ninguém')
+    + cardAlerta('Nunca entraram no app', linhas.filter(function(x){return !x.login_ts;}), 'var(--azul)', 'var(--azul)', 'todos já entraram')
+    + '<div class="card alerta-card" style="border-left-color:var(--verde);">'
+      +'<div class="lbl meta">Validações no período</div>'
+      +'<div class="n" style="color:var(--verde);">'+linhas.reduce(function(s,x){return s+x.noPer;},0)+'</div>'
+      +'<div class="meta" style="margin-top:6px;">'+linhas.filter(function(x){return x.noPer>0;}).length+' de '+linhas.length+' colaboradores ativos</div></div>';
+
+  /* --- gráfico por dia --- */
+  var nDias = parseInt(document.getElementById('acPer').value,10) || 30;
+  var hoje = soData(new Date());
+  var dias = [], porDia = {};
+  regs.forEach(function(r){ if(r.data){ var k=chaveDia(r.data); porDia[k]=(porDia[k]||0)+1; } });
+  for(var i=nDias-1; i>=0; i--){
+    var d = new Date(hoje); d.setDate(d.getDate()-i);
+    dias.push({d:d, k:chaveDia(d), n:porDia[chaveDia(d)]||0});
+  }
+  var maxN = Math.max.apply(null, dias.map(function(x){return x.n;}).concat([1]));
+  document.getElementById('acGrafPer').textContent = '· últimos '+nDias+' dias · pico de '+maxN+' num dia';
+  document.getElementById('acGrafico').innerHTML =
+    '<div class="graf">'+dias.map(function(x){
+      var h = Math.round(x.n/maxN*100);
+      var cls = 'col'+(!ehUtil(x.d)?' fds':'')+(x.n===0?' zero':'');
+      return '<div class="'+cls+'" title="'+pad2(x.d.getDate())+'/'+pad2(x.d.getMonth()+1)+': '+x.n+' validações">'
+        +'<div class="bar" style="height:'+(x.n?Math.max(h,3):2)+'%"></div></div>';
+    }).join('')+'</div>'
+    +'<div class="graf-eixo"><span>'+pad2(dias[0].d.getDate())+'/'+pad2(dias[0].d.getMonth()+1)+'</span>'
+    +'<span>hoje '+pad2(hoje.getDate())+'/'+pad2(hoje.getMonth()+1)+'</span></div>';
+
+  /* --- tabela --- */
+  function dt(d){ return d ? pad2(d.getDate())+'/'+pad2(d.getMonth()+1)+'/'+d.getFullYear() : '—'; }
+  var rows = linhas.map(function(x){
+    return '<tr>'
+      +'<td><div class="nome" style="font-size:13px;">'+x.nome+'</div><div class="meta" style="font-size:11.5px;">'+x.login+' · '+x.uf+'</div></td>'
+      +'<td>'+(x.tet ? x.tet : '<span class="meta">—</span>')+'</td>'
+      +'<td style="text-align:right;">'+x.cart+'</td>'
+      +'<td style="text-align:right;">'+x.done+'</td>'
+      +'<td style="min-width:90px;"><div class="barra" style="margin:2px 0 3px;"><div style="width:'+x.pct+'%"></div></div>'
+        +'<span class="meta" style="font-size:11.5px;">'+x.pct+'%</span></td>'
+      +'<td style="text-align:right; font-weight:600;">'+x.noPer+'</td>'
+      +'<td>'+dt(x.ultima)+'</td>'
+      +'<td style="text-align:right;">'+(x.parado===null?'—':x.parado)+'</td>'
+      +'<td>'+(x.loginTxt || '<span class="meta">nunca</span>')+'</td>'
+      +'<td><span class="badge '+x.cor+'">'+x.status+'</span></td>'
+      +'</tr>';
+  }).join('');
+  document.getElementById('acTabela').innerHTML = linhas.length
+    ? '<table><tr><th>Colaborador</th><th>TET atual</th><th style="text-align:right;">Carteira</th>'
+      +'<th style="text-align:right;">Feitos</th><th>Conclusão</th><th style="text-align:right;">No período</th>'
+      +'<th>Última validação</th><th style="text-align:right;">Dias parado</th><th>Último login</th><th>Status</th></tr>'
+      +rows+'</table>'
+    : '<div class="meta">Nenhum colaborador aprovado ainda.</div>';
+}
+
+function exportProdutividade(){
+  var regs = registros(), corte = corteDoPeriodo(), arr = cliArr();
+  var out = 'Colaborador;Login;UF;TET;Carteira;Feitos;Pendentes;PercentConcluido;ValidacoesNoPeriodo;TotalValidacoes;UltimaValidacao;DiasUteisParado;UltimoLogin;Status\n';
+  Object.keys(COLABS).filter(function(l){return COLABS[l].status==='ok';}).forEach(function(l){
+    var c = COLABS[l], tet = tetDoColab(l);
+    var cart = arr.filter(function(x){ return tet && x.tet===tet; });
+    var done = cart.filter(function(x){ return x.st!=='pen'; }).length;
+    var meus = regs.filter(function(r){ return r.login===l; });
+    var noPer = meus.filter(function(r){ return r.data && (!corte || r.data >= corte); }).length;
+    var datas = meus.map(function(r){return r.data;}).filter(Boolean).sort(function(a,b){return b-a;});
+    var ultima = datas[0] || null;
+    var parado = diasUteisParado(ultima);
+    var pct = cart.length ? Math.round(done/cart.length*100) : 0;
+    var status = !tet ? 'Sem TET' : !meus.length ? 'Nunca validou' : pct>=100 ? 'Concluido'
+      : parado>=DIAS_PARADO ? 'Parado' : parado===1 ? 'Atencao' : 'Ativo';
+    out += [c.nome, l, c.uf, tet||'', cart.length, done, cart.length-done, pct, noPer, meus.length,
+      ultima ? ultima.toLocaleString('pt-BR') : '', parado===null?'':parado, c.ultimoLogin||'', status].join(';')+'\n';
+  });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(["\ufeff"+out],{type:'text/csv;charset=utf-8'}));
+  a.download = 'produtividade_equipe.csv';
+  a.click();
 }
 
 /* ---- export ---- */
